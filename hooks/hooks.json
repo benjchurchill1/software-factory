@@ -1,0 +1,12 @@
+{
+  "description": "Bounded keep-alive for an autonomous build-loop seat. Inert until ~/.claude/state/build-loop/armed.json exists.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/build-loop-continue.sh\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

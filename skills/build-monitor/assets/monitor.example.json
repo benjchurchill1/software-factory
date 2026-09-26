@@ -1,0 +1,63 @@
+{
+  "project": "<PROJECT> v1",
+  "owner_name": "<OWNER>",
+  "repo": "<ABSOLUTE PATH TO REPO>",
+  "trunk": "<TRUNK_BRANCH>",
+  "remote": "origin",
+  "scoreboard": {
+    "path": "<PATH TO PROGRESS FILE>",
+    "row_prefix": "| ",
+    "id_regex": "^[A-Z]+-[A-Z]+-\\d+",
+    "verdict_column": 3,
+    "terminal": [
+      "PASS",
+      "N/A(pilot)",
+      "N/A(launch)",
+      "BLOCKED(policy-ruled)"
+    ],
+    "derived_rows": [],
+    "done_label": "Every v1 row has a terminal verdict"
+  },
+  "gates": {
+    "path": "docs/requirements/gate-baseline.json",
+    "done_at_zero": [
+      "screens:strict",
+      "e2e",
+      "e2e:suite"
+    ],
+    "labels": {}
+  },
+  "done_extra": [
+    {
+      "label": "Done sequence run: assessment + handoff written",
+      "done": false,
+      "detail": "after the last gate reaches zero"
+    }
+  ],
+  "wave": {
+    "conf": "scripts/lane-cut.conf",
+    "wave_regex": "^WAVE=(\\d+)",
+    "evidence_dir": "docs/requirements/assessments/evidence/wave{N}",
+    "lane_ledger": "lane-ranges.json",
+    "integration_branch": "w{N}/integration",
+    "lane_branch": "w{N}/{lane}",
+    "barrier_glob": "barrier*",
+    "barrier_launch": "launch.txt",
+    "barrier_exit_regex": "BARRIER EXIT=(\\d+)",
+    "verification_glob": "docs/requirements/assessments/verification/wave{N}-barrier-*.txt",
+    "queue_file": "orchestrator/wave{N1}-queue.md",
+    "verify_glob": "*verify-*.md",
+    "stage_prefix_regex": "^stage(\\d+)-",
+    "verdict_regex": "NO LENS REFUTES|REFUTED",
+    "build_marker": "build.md",
+    "merge_subject_regex": "merge {lane}\\b",
+    "approval_regex": "reviewing seat"
+  },
+  "history": {
+    "record_regex": "^wave {N} record",
+    "max": 30
+  },
+  "owner_list": "owner-list.md",
+  "out": "progress.html",
+  "artifact_url": ""
+}

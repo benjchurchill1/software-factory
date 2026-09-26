@@ -1,0 +1,15 @@
+{
+  "name": "software-factory",
+  "owner": { "name": "Ben Churchill" },
+  "metadata": {
+    "description": "Skills for running an autonomous, register-driven software build with Claude Code.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "software-factory",
+      "source": "./",
+      "description": "Prime a project for an unattended build, generate the wave-based build loop, and run a monitor seat with a live progress checklist."
+    }
+  ]
+}

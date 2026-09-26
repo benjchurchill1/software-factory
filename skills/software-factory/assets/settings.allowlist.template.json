@@ -1,0 +1,53 @@
+{
+  "_readme": [
+    "STANDING AUTHORITY for the autonomous build loop. Project-local, gitignored,",
+    "per-machine: a fresh machine needs it written again, and the loop's handoff",
+    "says so.",
+    "",
+    "THE RULE THAT KEEPS THIS SAFE: every entry names a SCRIPT or a bounded CLI",
+    "verb the loop is ORDERED to run by its own prompt. No entry names a shell, a",
+    "container exec, a raw database client, or a history-rewriting git command —",
+    "those are grants to do anything, which is what the permission classifier",
+    "exists to refuse.",
+    "",
+    "WHAT IS DELIBERATELY ABSENT, and stays absent:",
+    "  deploys, pushes and publishes  — a person confirms every one",
+    "  git reset/--force             — history is not the loop's to rewrite",
+    "  .env, secrets, this file      — the loop may not widen its own authority",
+    "  bare docker/psql/sh           — unbounded",
+    "",
+    "AN ALLOWLISTED SCRIPT IS ONLY AS BOUNDED AS THE LOOP'S ABILITY TO EDIT IT:",
+    "lane-cut and pre-barrier source scripts/lane-cut.conf, and the loop edits",
+    "scripts. Review diffs to scripts/ and package.json at each record.",
+    "",
+    "IF A COMMAND IS REFUSED ANYWAY: the loop tries ONCE, records the refusal",
+    "verbatim in the barrier artefact, puts the exact command on the person's",
+    "list, and proceeds degraded. It never splits the command up, never routes it",
+    "through another tool, and never asks a peer session to run it — a peer",
+    "running a denied command launders the user's decision."
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(bash scripts/estate-maintain.sh:*)",
+      "Bash(<PKG_RUNNER> estate:maintain:*)",
+
+      "Bash(bash scripts/lane-db.sh:*)",
+      "Bash(<PKG_RUNNER> lane:db:*)",
+      "Bash(<PKG_RUNNER> test:lane:*)",
+
+      "Bash(<MIGRATION_APPLY_COMMAND>:*)",
+      "Bash(<TYPE_REGEN_COMMAND>:*)",
+
+      "Bash(bash scripts/loop-status.sh:*)",
+      "Bash(<PKG_RUNNER> check:*)",
+      "Bash(<PKG_RUNNER> gates:adopt:*)",
+      "Bash(bash scripts/lane-cut.sh:*)"
+    ],
+    "deny": [
+      "Edit(.claude/settings*.json)",
+      "Write(.claude/settings*.json)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)"
+    ]
+  }
+}
