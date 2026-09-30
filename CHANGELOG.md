@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+Five additions for a build nobody reviews wave by wave. None was measured on the source build; each extends a rule that held there only while someone watched.
+
+- **Lessons become checks.** Every refutation that stands (contention ruled out) is appended to a checks ledger as a failure class, its lens, its evidence and, where it can be mechanical, a script under `scripts/checks/`. Panels read their lens's checks before the claim and run the scripts; the barrier runs them all. The ledger is append-only, and a check is retired only by a ruling that names it, never the loop's (ruling policy §Retiring a check). Lanes that collided at a barrier go in a never-together ledger under the same rules, and pre-flight keeps them out of one wave.
+- **Clean rounds.** A lane is finished when `<CLEAN_ROUNDS>` (default 2) fresh panel rounds in a row come back clean at the same lane commit. Any commit resets the count; a refuted round ends the stage; rounds don't use up the three stages. Each verifier writes a `## Prediction` before it reads the builder's self-report.
+- **Test-freeze hook.** A new PreToolUse hook (`hooks/test-freeze.py`) refuses an edit to a committed test, inert until the repo commits `.claude/test-freeze.json`. The pre-barrier `tests` line is the guarantee: it fails a merge that edits a committed test, or deletes one without a supersession record whose successor names it.
+- **Pre-flight.** New `preflight.sh`, run at wave open and before every barrier attempt: generated files free of slots, disk, reboot since last seen, pending reboot, login time left, usage window and budget, never-together. Exits 0 go, 1 fail, 10 pause, 20 stop, 30 recover. An expiring login stops the loop cleanly with an `auth-expiring` handoff, never mid-barrier. A spent usage window **pauses** until the reset: the seat writes the keep-alive hook's new `pause` file, which lets it stop uncounted, and is woken by the rig's resume mechanism.
+- **Usage ledger.** The journal's `usage` and `rate_limit` events are the pacing source: the next wave or barrier is estimated as the largest of the last three.
+- New `guards.py` (standard library) behind the pre-barrier ratchet lines and pre-flight: `ledger`, `checks`, `tests`, `panels`, `together`, `pace`, `auth`.
+- `pre-barrier.sh` gains five lines: tests, checks-ledger, together-ledger, panels, checks.
+- The factory has thirteen gates: 11 (pre-flight) and 12 (the ratchet). The rig template gains §Disk and reboots and §Login and usage; recovery gains three drills (reboot, usage limit, login expiry); the allowlist gains the new scripts and denies edits to the freeze config.
+- The progress page shows `paused` time in "Where the time went"; the monitor checks clean rounds, predictions and proposed checks at review.
+- One new task eval each for `build-loop` and `software-factory`.
+- Self-test: 41 tests (from 26).
+
 ## 0.2.1
 
 - **Where the time went.** The loop prompt now has the build seat journal a start and end `phase` event for each step (`cut`, `build`, `verify`, `review_wait`, `barrier`, `record`, `owner_wait`). `progress.py` gives each minute of a wave to the highest-priority active phase (work outranks waiting) and reports gaps as unaccounted, so each wave's split adds up to its real span. The progress page shows the current wave as a stacked bar with the largest cost named, and the last twelve waves for comparison. Enabled by `timing.journal` in `monitor.json`.

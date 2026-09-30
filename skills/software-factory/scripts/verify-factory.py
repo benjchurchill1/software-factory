@@ -19,11 +19,14 @@ import sys
 SKILL = Path(__file__).resolve().parents[1]
 LOOP = SKILL.parent / "build-loop"
 HOOKS = SKILL.parents[1] / "hooks"
+GUARDS = SKILL / "assets" / "guards.py"
 FULL = "a" * 40
 SLOT = re.compile(r"<[A-Z][A-Z0-9_]*(?::[^>]*|\s[^>]*)?>")
 
 
-class FactoryFixtures(unittest.TestCase):
+class ScriptFixture(unittest.TestCase):
+    """Rendered templates in a temp dir, with every external command mocked."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="factory-fixture-")
         self.addCleanup(self.temp.cleanup)
@@ -75,6 +78,7 @@ esac
         source = SLOT.sub(lambda m: values.get(m.group()[1:-1], ":"), source)
         path = self.scripts / (name + ".sh")
         path.write_text(source)
+        shutil.copy2(GUARDS, self.scripts / "guards.py")
         syntax = subprocess.run(["bash", "-n", str(path)], capture_output=True, text=True)
         self.assertEqual(syntax.returncode, 0, syntax.stderr)
         return path
@@ -93,6 +97,9 @@ esac
             "TERMINATE_SQL_FOR_CONN": "terminate", "REAPER_COMMAND": "mock reap",
             "ANALYZE_COMMAND": "mock analyze", "APP_SERVER_PROCESS_PATTERN": "fixture-server"})
 
+
+
+class FactoryFixtures(ScriptFixture):
     def test_maintenance_dry_run_and_arguments(self):
         path = self.maintenance()
         evidence = str(self.root / "new-evidence")
@@ -294,13 +301,28 @@ esac
         shutil.copy2(self.bin / "mock", platform_bin / "mock")
         self.env.update(PATH=str(platform_bin) + os.pathsep + os.environ["PATH"],
                         GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+        state = self.root / "run state"
         rendered = self.render("pre-barrier", {
             "TRUNK_BRANCH": "trunk", "INTEGRATION_BRANCH": "w1/integration",
             "LANE_BRANCH_GLOB": "w1/*", "TYPECHECK_COMMAND": "mock typecheck",
             "REGISTRY_DUP_CHECK": 'mock dupcheck; [ "${DUP_FAIL:-0}" = 0 ]',
-            "SHARED_ONLY_SUITES": "mock suites"})
+            "SHARED_ONLY_SUITES": "mock suites", "CHECKS_LEDGER": "docs/build/checks.jsonl",
+            "NEVER_TOGETHER_PATH": "docs/build/never-together.jsonl", "CLEAN_ROUNDS": "2",
+            "RUN_STATE_DIR": str(state)})
         path = repo / "scripts" / "pre-barrier.sh"
         shutil.copy2(rendered, path)
+        shutil.copy2(GUARDS, repo / "scripts" / "guards.py")
+        (repo / "scripts" / "lane-cut.conf").write_text("WAVE=1\n")
+        state.mkdir()
+        journal = state / "journal.jsonl"
+        journal.write_text("")
+
+        def clean(lane, rounds=2):
+            tip = git("rev-parse", "w1/" + lane)
+            with open(journal, "a") as fh:
+                for r in range(1, rounds + 1):
+                    fh.write(json.dumps({"type": "panel", "wave": 1, "lane": lane, "stage": 1,
+                                         "round": r, "commit": tip, "verdict": "clean"}) + "\n")
 
         def git(*args):
             result = subprocess.run(
@@ -319,8 +341,10 @@ esac
 
         git("init", "-b", "trunk")
         commit("app.txt")
+        commit(".claude/test-freeze.json", json.dumps({"tests": ["tests/**"], "base": "trunk"}))
         git("checkout", "-b", "w1/ab")
         commit("ab.txt")
+        clean("ab")
         git("checkout", "-b", "w1/integration", "trunk")
         git("merge", "--no-ff", "-m", "merge ab", "w1/ab")
 
@@ -333,13 +357,15 @@ esac
         result = self.run_script(path)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual([l.split()[1].rstrip(":") for l in result.stdout.splitlines()],
-                         ["head", "ancestry", "artefacts", "typecheck", "registry", "shared"])
+                         ["head", "ancestry", "artefacts", "tests", "checks-ledger", "together-ledger",
+                          "panels", "checks", "typecheck", "registry", "shared"])
         self.assertNotIn("FAIL", result.stdout)
 
         # A lane not merged is a stale merge; every later check still runs.
         git("branch", "w1/cd", "trunk")
         git("checkout", "w1/cd")
         commit("cd.txt")
+        clean("cd")
         git("checkout", "w1/integration")
         open(self.log, "w").close()
         result = self.run_script(path)
@@ -359,6 +385,20 @@ esac
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("FAIL artefacts: w1/ef: test-results/run 1/trace.zip", result.stdout)
         self.assertIn("FAIL registry", result.stdout)
+        self.assertIn("FAIL panels: ef: no panel rounds", result.stdout)
+        clean("ef", rounds=1)
+        self.assertIn("ef: 1 clean in a row", self.run_script(path, "--squashed", "cd").stdout)
+
+        # The ratchet: a committed test edited on the integration branch.
+        git("checkout", "trunk")
+        commit("tests/a.test", "assert strict\n")
+        git("checkout", "w1/integration")
+        git("merge", "--no-ff", "-m", "take trunk", "trunk")
+        clean("ef")
+        self.assertIn("PASS tests", self.run_script(path, "--squashed", "cd").stdout)
+        commit("tests/a.test", "assert loose\n")
+        self.assertIn("FAIL tests: committed tests edited: tests/a.test",
+                      self.run_script(path, "--squashed", "cd").stdout)
         git("checkout", "trunk")
         self.assertIn("FAIL head", self.run_script(path, "--squashed", "cd").stdout)
 
@@ -368,7 +408,12 @@ esac
                        "journal.jsonl", "checkpoint.json", "budget-exhausted", "<WAVE_SPEND_LIMIT>",
                        "original deadline", "migration ID/checksum", "<LANE_CUT_COMMAND>",
                        "<PRE_BARRIER_COMMAND>", "attempt 3 is a reduction", "Multi-stage lanes",
-                       "never `git revert -m 1`", "<DEPLOY_BRANCH>", '"type": "phase"', "review_wait", "owner_wait"]:
+                       "never `git revert -m 1`", "<DEPLOY_BRANCH>", '"type": "phase"', "review_wait", "owner_wait",
+                       "<PREFLIGHT_COMMAND> --barrier", "<CLEAN_ROUNDS> panel rounds in a row",
+                       "## Prediction", "## Lessons become checks", "### Pausing on a usage limit",
+                       '"type": "usage"', '"type": "rate_limit"', "auth-expiring", "<SUPERSESSIONS_PATH>",
+                       "<NEVER_TOGETHER_PATH>", "A contention red never becomes a check",
+                       "the loop never rules on its own checks", "`paused`"]:
             self.assertIn(clause, " ".join(loop.split()))
         conventions = (LOOP / "assets/build-conventions.template.md").read_text()
         for clause in ["## Seats", "`build-monitor`", "isolation: 'worktree'"]:
@@ -378,11 +423,22 @@ esac
         drills = (SKILL / "references/recovery.md").read_text()
         for clause in ["Builder dies", "Migration applied", "Commit succeeds", "Deploy accepted",
                        "exhausted spend/deadline", "Seeded scoreboard", "restore into a disposable",
-                       "Red barrier after an excluded lane", "Residual excluded schema"]:
+                       "Red barrier after an excluded lane", "Residual excluded schema",
+                       "Host reboots", "Usage limit", "Login expires"]:
             self.assertIn(clause, drills)
+        policy = (SKILL / "assets/ruling-policy.template.md").read_text()
+        self.assertIn("## Retiring a check", policy)
+        allow = json.loads((SKILL / "assets/settings.allowlist.template.json").read_text())
+        self.assertIn("Edit(.claude/test-freeze.json)", allow["permissions"]["deny"])
+        hooks = json.loads((HOOKS / "hooks.json").read_text())["hooks"]
+        for event in hooks.values():
+            for group in event:
+                for hook in group["hooks"]:
+                    script = re.search(r"hooks/([\w-]+\.py)", hook["command"]).group(1)
+                    self.assertTrue((HOOKS / script).is_file(), script)
 
 
-class KeepAliveHook(unittest.TestCase):
+class KeepAliveBase(unittest.TestCase):
     """The Stop hook and its arming helper, against real git in temp repos."""
 
     MARKER = "build-loop-test-nonce-0001"
@@ -431,6 +487,9 @@ class KeepAliveHook(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         return json.loads(out.stdout) if out.stdout.strip() else None
 
+
+
+class KeepAliveHook(KeepAliveBase):
     def test_unarmed_allows(self):
         self.assertIsNone(self.stop(self.repo_a))
 
@@ -502,7 +561,7 @@ class KeepAliveHook(unittest.TestCase):
         self.assertEqual((out.returncode, out.stdout), (0, ""))
 
 
-class PhaseTimings(unittest.TestCase):
+class TimingBase(unittest.TestCase):
     """progress.py's "where the time went": priority attribution over journal phases."""
 
     @classmethod
@@ -539,6 +598,9 @@ class PhaseTimings(unittest.TestCase):
         data = self.p.timings("/", self.cfg, current, now=self.at(now))
         return next(w for w in data["waves"] if w["wave"] == n)
 
+
+
+class PhaseTimings(TimingBase):
     def test_work_outranks_waiting_and_gaps_are_unaccounted(self):
         self.write((1, "build", "a", "start", "10:00"), (1, "build", "b", "start", "10:10"),
                    (1, "build", "b", "end", "10:30"), (1, "verify", "b", "start", "10:30"),
@@ -578,6 +640,389 @@ class PhaseTimings(unittest.TestCase):
     def test_absent_config_and_unreadable_journal(self):
         self.assertIsNone(self.p.timings("/", {}, 1))
         self.assertIn("error", self.p.timings("/", self.cfg, 1))
+
+
+class RealRepo(unittest.TestCase):
+    """A temp git repo on branch `trunk`, with helpers."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="guards fixture ")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.repo = self.root / "repo"
+        self.repo.mkdir()
+        self.env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1",
+                        GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t",
+                        GIT_COMMITTER_EMAIL="t@t")
+        self.assertIsNotNone(shutil.which("git"), "real Git is required for this fixture")
+        self.git("init", "-q", "-b", "trunk")
+
+    def git(self, *args, cwd=None):
+        out = subprocess.run(["git", "-C", str(cwd or self.repo), "-c", "commit.gpgsign=false", *args],
+                             env=self.env, capture_output=True, text=True, timeout=10)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return out.stdout.strip()
+
+    def put(self, name, text, commit=True):
+        path = self.repo / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        if commit:
+            self.git("add", "-A")
+            self.git("commit", "-q", "-m", "put " + name)
+        return path
+
+    def jl(self, *entries):
+        return "".join(json.dumps(e) + "\n" for e in entries)
+
+    def guard(self, *args):
+        out = subprocess.run([sys.executable, str(GUARDS), "--root", str(self.repo), *args],
+                             env=self.env, capture_output=True, text=True, timeout=30)
+        self.assertEqual(len(out.stdout.splitlines()) in (1, 2), True, out.stdout + out.stderr)
+        return out.returncode, out.stdout
+
+
+class Guards(RealRepo):
+    """guards.py: the ratchet (ledgers, test freeze, clean rounds) and the pace and auth checks."""
+
+    LEDGER = "docs/build/checks.jsonl"
+
+    def test_ledger_is_append_only_and_retired_only_by_a_ruling(self):
+        c1 = {"op": "add", "id": "C-1", "class": "lists filter by tenant", "lens": "permissions",
+              "source": "evidence/w3/panel.md", "run": "scripts/checks/c1.sh"}
+        self.put("scripts/checks/c1.sh", "exit 0\n", commit=False)
+        self.put(self.LEDGER, self.jl(c1))
+        self.git("checkout", "-q", "-b", "work")
+        ledger = lambda: self.guard("ledger", self.LEDGER, "--kind", "checks", "--trunk", "trunk")
+        self.assertEqual(ledger()[0], 0)
+        c2 = {"op": "add", "id": "C-2", "class": "totals reconcile", "source": "e2"}
+        self.put(self.LEDGER, self.jl(c1, c2), commit=False)
+        rc, out = ledger()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("2 active, 1 new lines", out)
+        # Editing an earlier line, or deleting the file, is not appending.
+        self.put(self.LEDGER, self.jl(dict(c1, lens="all"), c2), commit=False)
+        self.assertIn("edited, not appended", ledger()[1])
+        (self.repo / self.LEDGER).unlink()
+        self.assertIn("deleted", ledger()[1])
+        # A retirement needs a ruling that exists and names the check.
+        retire = {"op": "retire", "id": "C-1", "ruling": "decisions/r1.md"}
+        self.put(self.LEDGER, self.jl(c1, retire), commit=False)
+        self.assertIn("does not exist", ledger()[1])
+        self.put("decisions/r1.md", "# Retire C-10\n", commit=False)
+        self.assertIn("does not name it", ledger()[1])
+        self.put("decisions/r1.md", "# Retire C-1: measured wrong\n", commit=False)
+        rc, out = ledger()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("0 active", out)
+        # The shape of an entry.
+        for bad, why in [({"op": "add", "id": "C-3", "class": "x"}, "no source"),
+                         ({"op": "add", "id": "C-3", "source": "s"}, "no class"),
+                         ({"op": "add", "id": "C-3", "class": "x", "source": "s", "run": "rm -rf /"},
+                          "under scripts/checks/"),
+                         ({"op": "add", "id": "C-1", "class": "x", "source": "s"}, "added twice"),
+                         ({"op": "retire", "id": "C-9", "ruling": "decisions/r1.md"}, "before it was added")]:
+            self.put(self.LEDGER, self.jl(c1, bad), commit=False)
+            rc, out = ledger()
+            self.assertEqual(rc, 1, out)
+            self.assertIn(why, out)
+        self.put("together.jsonl", self.jl({"op": "add", "id": "T-1", "rows": ["A-1"], "source": "s"}),
+                 commit=False)
+        self.assertIn("two row IDs", self.guard("ledger", "together.jsonl", "--kind", "together",
+                                                "--trunk", "trunk")[1])
+
+    def test_checks_run_and_a_recurrence_fails(self):
+        self.put("scripts/checks/ok.sh", "exit 0\n", commit=False)
+        self.put("scripts/checks/bad.sh", "echo recurred >&2; exit 1\n", commit=False)
+        entries = [{"op": "add", "id": "C-1", "class": "a", "source": "s", "run": "scripts/checks/ok.sh"},
+                   {"op": "add", "id": "C-2", "class": "b", "source": "s", "run": "scripts/checks/bad.sh"},
+                   {"op": "add", "id": "C-3", "class": "c", "source": "s"}]
+        self.put(self.LEDGER, self.jl(*entries), commit=False)
+        rc, out = self.guard("checks", self.LEDGER)
+        self.assertEqual(rc, 1)
+        self.assertIn("recurred: C-2", out)
+        self.put("decisions/r.md", "C-2 is subsumed by C-1\n", commit=False)
+        self.put(self.LEDGER, self.jl(*entries, {"op": "retire", "id": "C-2", "ruling": "decisions/r.md"}),
+                 commit=False)
+        rc, out = self.guard("checks", self.LEDGER)
+        self.assertEqual(rc, 0, out)
+        self.assertIn("1 run, 1 by lens only", out)
+
+    def test_committed_tests_are_superseded_never_edited(self):
+        self.put(".claude/test-freeze.json", json.dumps(
+            {"tests": ["tests/**", "**/*.spec.ts"], "base": "trunk"}), commit=False)
+        self.put("tests/a.test", "assert strict\n", commit=False)
+        self.put("web/x.spec.ts", "expect(1)\n")
+        self.git("checkout", "-q", "-b", "work")
+        tests = lambda: self.guard("tests", "--trunk", "trunk")
+        self.put("tests/new.test", "fresh\n")
+        self.assertEqual(tests()[0], 0, "a new test is not frozen")
+        self.put("web/x.spec.ts", "expect(true)\n")
+        rc, out = tests()
+        self.assertEqual(rc, 1)
+        self.assertIn("committed tests edited: web/x.spec.ts", out)
+        self.git("reset", "-q", "--hard", "HEAD~1")
+        self.git("rm", "-q", "tests/a.test")
+        self.git("commit", "-q", "-m", "drop a")
+        self.assertIn("no supersession record", tests()[1])
+        reg = "docs/build/supersessions.jsonl"
+        self.put(reg, self.jl({"predecessor": "tests/a.test", "successor": "tests/new.test",
+                               "why": "encoded the defect", "wave": 4}))
+        self.assertIn("does not name its predecessor", tests()[1])
+        self.put("tests/new.test", "# supersedes a.test\nfresh\n")
+        rc, out = tests()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("1 superseded", out)
+        self.put(".claude/test-freeze.json", json.dumps({"tests": [], "base": "trunk"}))
+        self.assertIn(".claude/test-freeze.json changed", tests()[1])
+        self.git("checkout", "-q", "trunk")
+        self.assertIn("PASS", tests()[1])
+
+    def test_supersessions_register_is_append_only(self):
+        self.put(".claude/test-freeze.json", json.dumps({"tests": ["tests/**"], "base": "trunk"}),
+                 commit=False)
+        reg = "docs/build/supersessions.jsonl"
+        self.put(reg, self.jl({"predecessor": "tests/a", "successor": "tests/b"}))
+        self.git("checkout", "-q", "-b", "work")
+        self.put(reg, "")
+        self.assertIn("edited, not appended", self.guard("tests", "--trunk", "trunk")[1])
+
+    def test_panels_need_clean_rounds_in_a_row_at_the_tip(self):
+        journal = self.root / "journal.jsonl"
+        tip, old = "b" * 40, "c" * 40
+
+        def rounds(*events):
+            journal.write_text(self.jl(*[{"type": "panel", "wave": 5, "lane": "ab", "stage": st,
+                                          "round": i, "commit": c, "verdict": v}
+                                         for i, (st, c, v) in enumerate(events, 1)]))
+            return self.guard("panels", "--journal", str(journal), "--wave", "5", "--rounds", "2",
+                              "ab=" + tip)
+
+        self.assertEqual(rounds((1, old, "refuted"), (2, tip, "clean"), (2, tip, "clean"))[0], 0)
+        self.assertIn("1 clean in a row", rounds((1, tip, "clean"), (1, tip, "refuted"), (2, tip, "clean"))[1])
+        self.assertIn("1 clean in a row", rounds((1, old, "clean"), (2, tip, "clean"))[1])
+        self.assertIn("tip moved", rounds((1, old, "clean"), (1, old, "clean"))[1])
+        self.assertIn("stage 4", rounds((4, tip, "clean"), (4, tip, "clean"))[1])
+        self.assertIn("no panel rounds", self.guard("panels", "--journal", str(journal), "--wave", "6",
+                                                    "--rounds", "2", "ab=" + tip)[1])
+        self.assertEqual(self.guard("panels", "--journal", str(self.root / "none"), "--wave", "5",
+                                    "--rounds", "2", "ab=" + tip)[0], 1)
+
+    def test_never_together_reads_the_queue(self):
+        ledger = self.put("together.jsonl", self.jl(
+            {"op": "add", "id": "T-1", "rows": ["INV-01", "PAY-02"], "source": "barrier 12-1"}), commit=False)
+        queue = self.put("queue.md", "- lane ab: INV-01, PAY-02\n", commit=False)
+        together = lambda: self.guard("together", "together.jsonl", "--queue", str(queue))
+        rc, out = together()
+        self.assertEqual(rc, 1)
+        self.assertIn("T-1 (INV-01 + PAY-02)", out)
+        queue.write_text("- lane ab: INV-01, PAY-021\n")
+        self.assertEqual(together()[0], 0, "a longer row ID is a different row")
+        queue.write_text("- lane ab: INV-01\n- lane cd: PAY-02\n")
+        self.put("decisions/r.md", "T-1: the shared table was split in wave 14\n", commit=False)
+        ledger.write_text(ledger.read_text() + self.jl({"op": "retire", "id": "T-1", "ruling": "decisions/r.md"}))
+        self.assertEqual(together()[0], 0)
+
+    def test_pace_pauses_on_the_window_and_stops_on_the_budget(self):
+        journal = self.root / "journal.jsonl"
+        use = lambda w, ph, x: {"type": "usage", "wave": w, "phase": ph, "amount": x}
+        journal.write_text(self.jl(use(1, "build", 10), use(2, "build", 22), use(2, "barrier", 8),
+                                   use(3, "build", 15), use(3, "barrier", 5), use(4, "build", 3)))
+        now = "2099-01-01T00:00:00Z"
+        pace = lambda *extra: self.guard("pace", "--journal", str(journal), "--wave", "4", "--now", now,
+                                         "--reserve", "5", *extra)
+        rc, out = pace("--mode", "wave", "--limit", "200")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("next wave about 30 (largest of last 3), spent 63", out)
+        self.assertIn("about 8", pace("--mode", "barrier")[1])
+        rc, out = pace("--mode", "wave", "--limit", "90")
+        self.assertEqual(rc, 20)
+        self.assertIn("budget-exhausted", out)
+        rc, out = pace("--mode", "wave", "--remaining", "20", "--resets-at", "2099-01-01T05:00:00Z")
+        self.assertEqual(rc, 10)
+        self.assertIn("resume_at 2099-01-01T05:00:00Z", out)
+        self.assertEqual(pace("--mode", "wave", "--remaining", "40")[0], 0)
+        self.assertEqual(pace("--mode", "wave", "--remaining", "20")[0], 20, "short, with no reset time")
+        journal.write_text(journal.read_text() + self.jl(
+            {"type": "rate_limit", "at": "2098-12-31T23:00:00Z", "resets_at": "2099-01-01T02:00:00Z"}))
+        rc, out = pace("--mode", "barrier")
+        self.assertEqual(rc, 10)
+        self.assertIn("resume_at 2099-01-01T02:00:00Z", out)
+        now = "2099-01-01T03:00:00Z"
+        self.assertEqual(pace("--mode", "barrier")[0], 0, "a limit that has reset")
+        journal.write_text("")
+        self.assertEqual(pace("--mode", "wave")[0], 20, "no history and no default estimate")
+        self.assertEqual(pace("--mode", "wave", "--default-estimate", "12")[0], 0)
+
+    def test_auth_stops_before_the_login_expires(self):
+        auth = lambda *a: self.guard("auth", "--now", "2099-01-01T12:00:00Z", *a)
+        self.assertEqual(auth("--need-minutes", "60", "--remaining-seconds", "7200")[0], 0)
+        rc, out = auth("--need-minutes", "60", "--remaining-seconds", "1800")
+        self.assertEqual(rc, 20)
+        self.assertIn("auth-expiring", out)
+        self.assertIn("cannot tell", auth("--need-minutes", "60", "--remaining-seconds", "unknown")[1])
+        since = self.root / "auth-at"
+        since.write_text("2099-01-01T11:00:00Z\n")
+        counted = ("--remaining-seconds", "unknown", "--since", str(since), "--lifetime-hours", "8")
+        self.assertEqual(auth("--need-minutes", "60", *counted)[0], 0)
+        since.write_text("2099-01-01T04:30:00Z\n")
+        self.assertEqual(auth("--need-minutes", "60", *counted)[0], 20)
+
+
+class Preflight(ScriptFixture):
+    """preflight.sh, rendered, with the machine's answers mocked."""
+
+    def preflight(self):
+        path = self.render("preflight", {
+            "RUN_STATE_DIR": str(self.root / "state"), "GENERATED_FILES": '"gen.md" "scripts/lane-cut.conf"',
+            "DISK_PATHS": '"." "$ROOT/scripts"', "DISK_FREE_GB": "${DISK_GB:-0}",
+            "BOOT_ID_COMMAND": 'echo "${BOOT:-boot-1}"', "REBOOT_PENDING_COMMAND": '[ "${PENDING:-0}" = 1 ]',
+            "AUTH_CHECK_COMMAND": 'echo "${AUTH_SECS:-99999}"', "AUTH_LIFETIME_HOURS": "8",
+            "USAGE_WINDOW_COMMAND": 'echo "${WINDOW:-}"', "NEVER_TOGETHER_PATH": "together.jsonl",
+            "BARRIER_MAX_MINUTES": "60", "HANDOFF_RESERVE_MINUTES": "10", "WAVE_TIME_LIMIT_MINUTES": "240",
+            "BARRIER_SPEND_ESTIMATE": "5", "WAVE_SPEND_LIMIT_NUMBER": "20", "SPEND_LIMIT_NUMBER": "1000",
+            "HANDOFF_RESERVE_NUMBER": "5"})
+        (self.scripts / "lane-cut.conf").write_text("WAVE=2\n")
+        (self.root / "gen.md").write_text("# the loop prompt, filled\n")
+        (self.root / "state").mkdir(exist_ok=True)
+        (self.root / "state" / "journal.jsonl").write_text("")
+        (self.root / "queue.md").write_text("- lane ab: INV-01\n- lane cd: PAY-02\n")
+        return path
+
+    def run_pf(self, path, *args, **env):
+        result = self.run_script(path, *args, **env)
+        return result.returncode, result.stdout + result.stderr
+
+    def test_preflight_go_and_dry_run(self):
+        path = self.preflight()
+        (self.root / "state" / "journal.jsonl").unlink()
+        (self.root / "state").rmdir()
+        rc, out = self.run_pf(path, "--dry-run")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("would compare", out)
+        self.assertFalse((self.root / "state").exists(), "a dry run writes nothing")
+        self.assertEqual(self.run_pf(path)[0], 2, "wave open needs its queue")
+        path = self.preflight()
+        rc, out = self.run_pf(path, "--queue", str(self.root / "queue.md"))
+        self.assertEqual(rc, 0, out)
+        self.assertEqual([l.split()[1].rstrip(":") for l in out.splitlines()],
+                         ["config", "disk", "boot", "reboot", "auth", "usage", "together"])
+        rc, out = self.run_pf(path, "--barrier")
+        self.assertEqual(rc, 0, out)
+        self.assertNotIn("together", out)
+        rc, out = self.run_pf(path, "--barrier", PENDING="1")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("WARN reboot", out)
+
+    def test_preflight_fail_recover_stop_pause(self):
+        path = self.preflight()
+        q = ("--queue", str(self.root / "queue.md"))
+        self.assertEqual(self.run_pf(path, *q)[0], 0)
+        (self.root / "gen.md").write_text("owner: <OWNER>\n")
+        rc, out = self.run_pf(path, *q)
+        self.assertEqual(rc, 1)
+        self.assertIn("FAIL config: unreplaced slots in gen.md(1)", out)
+        (self.root / "gen.md").write_text("filled\n")
+        rc, out = self.run_pf(path, *q, DISK_GB="100000000")
+        self.assertEqual(rc, 1)
+        self.assertIn("FAIL disk: low on", out)
+        rc, out = self.run_pf(path, *q, BOOT="boot-2")
+        self.assertEqual(rc, 30)
+        self.assertIn("RECOVER boot", out)
+        self.assertEqual(self.run_pf(path, *q, BOOT="boot-2")[0], 30, "until acknowledged")
+        self.assertEqual(self.run_pf(path, *q, "--ack-reboot", BOOT="boot-2")[0], 0)
+        self.assertEqual(self.run_pf(path, *q, BOOT="boot-2")[0], 0)
+        # The login must outlast the step: 250 minutes at wave open, 70 before a barrier.
+        rc, out = self.run_pf(path, *q, BOOT="boot-2", AUTH_SECS="6000")
+        self.assertEqual(rc, 20)
+        self.assertIn("STOP auth: auth-expiring", out)
+        self.assertEqual(self.run_pf(path, "--barrier", BOOT="boot-2", AUTH_SECS="6000")[0], 0)
+        window = "3 2099-01-01T05:00:00Z"
+        rc, out = self.run_pf(path, "--barrier", BOOT="boot-2", WINDOW=window)
+        self.assertEqual(rc, 10)
+        self.assertIn("resume_at 2099-01-01T05:00:00Z", out)
+        self.assertEqual(self.run_pf(path, "--barrier", BOOT="boot-2", WINDOW=window, AUTH_SECS="60")[0], 20,
+                         "a stop outranks a pause")
+        (self.root / "together.jsonl").write_text(json.dumps(
+            {"op": "add", "id": "T-1", "rows": ["INV-01", "PAY-02"], "source": "barrier 1-2"}) + "\n")
+        rc, out = self.run_pf(path, *q, BOOT="boot-2")
+        self.assertEqual(rc, 1)
+        self.assertIn("FAIL together", out)
+
+
+class TestFreezeHook(RealRepo):
+    """The PreToolUse hook: committed tests are refused, everything else allowed."""
+
+    def setUp(self):
+        super().setUp()
+        self.put(".claude/test-freeze.json", json.dumps(
+            {"tests": ["tests/**"], "base": "trunk", "supersessions": "docs/build/supersessions.jsonl"}),
+            commit=False)
+        self.put("tests/a.test", "assert strict\n")
+
+    def hook(self, tool, file_path, cwd=None):
+        payload = {"tool_name": tool, "tool_input": {"file_path": str(file_path)},
+                   "cwd": str(cwd or self.repo)}
+        out = subprocess.run([sys.executable, str(HOOKS / "test-freeze.py")], input=json.dumps(payload),
+                             env=self.env, capture_output=True, text=True, timeout=10)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        if not out.stdout.strip():
+            return None
+        decision = json.loads(out.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        return decision["permissionDecisionReason"]
+
+    def test_committed_tests_and_the_config_are_refused(self):
+        reason = self.hook("Edit", self.repo / "tests/a.test")
+        self.assertIn("committed test", reason)
+        self.assertIn("docs/build/supersessions.jsonl", reason)
+        self.assertIsNotNone(self.hook("Write", "tests/a.test"), "a relative path resolves from cwd")
+        self.assertIsNotNone(self.hook("MultiEdit", self.repo / "tests/a.test"))
+        self.assertIn("defines the test freeze", self.hook("Edit", self.repo / ".claude/test-freeze.json"))
+
+    def test_new_tests_other_files_and_other_tools_are_allowed(self):
+        self.assertIsNone(self.hook("Write", self.repo / "tests/new/b.test"))
+        self.assertIsNone(self.hook("Edit", self.repo / "src/app.js"))
+        self.assertIsNone(self.hook("Bash", self.repo / "tests/a.test"))
+        elsewhere = self.root / "other"
+        elsewhere.mkdir()
+        self.assertIsNone(self.hook("Edit", elsewhere / "tests/a.test"), "no config, no effect")
+        out = subprocess.run([sys.executable, str(HOOKS / "test-freeze.py")], input="not json",
+                             env=self.env, capture_output=True, text=True)
+        self.assertEqual((out.returncode, out.stdout), (0, ""))
+
+    def test_a_lane_worktree_is_frozen_too(self):
+        lane = self.root / "lanes" / "w1 ab"
+        self.git("worktree", "add", "-q", "-b", "w1/ab", str(lane))
+        self.assertIsNotNone(self.hook("Edit", lane / "tests/a.test", cwd=lane))
+        self.assertIsNone(self.hook("Write", lane / "tests/lane-own.test", cwd=lane))
+
+
+class KeepAlivePause(KeepAliveBase):
+    """A usage pause lets the seat stop, uncounted, until its reset time."""
+
+    def test_a_pause_in_the_future_allows_the_stop(self):
+        self.arm(self.repo_a, "--max", "2")
+        pause = next(self.state.glob("*/armed.json")).parent / "pause"
+        self.assertIn(str(pause), self.stop(self.repo_a)["reason"])
+        pause.write_text(json.dumps({"until": "2099-01-01T00:00:00Z", "reason": "usage"}))
+        for _ in range(4):
+            self.assertIsNone(self.stop(self.repo_a), "paused: allowed, and not counted")
+        status = subprocess.run([sys.executable, str(HOOKS / "arm.py"), "status", str(self.repo_a)],
+                                env=self.env, capture_output=True, text=True).stdout
+        self.assertIn("paused until 2099-01-01T00:00:00Z", status)
+        pause.write_text(json.dumps({"until": "2000-01-01T00:00:00Z", "reason": "usage"}))
+        self.assertIn("(2 of 2", self.stop(self.repo_a)["reason"], "a past pause is ignored")
+        self.arm(self.repo_a)
+        self.assertFalse(pause.exists(), "re-arming clears a pause")
+
+
+class PausedPhase(TimingBase):
+    def test_paused_ranks_last(self):
+        self.write((1, "paused", "", "start", "10:00"), (1, "build", "a", "start", "10:30"),
+                   (1, "build", "a", "end", "10:45"), (1, "paused", "", "end", "11:00"))
+        self.assertEqual(self.wave(1)["phases"], {"paused": 45, "build": 15})
+        self.assertEqual(self.p.PHASES[-1], "paused")
 
 
 class HouseStyle(unittest.TestCase):

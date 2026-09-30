@@ -75,9 +75,10 @@ Derived from the `phase` events the build seat writes to its journal (the loop
 prompt's §Persistent budgets and recovery says when). Lanes run in parallel, so
 adding up phases would overcount. Instead every minute of a wave is given to
 the highest-priority phase active in that minute, in this order: `barrier`,
-`record`, `cut`, `build`, `verify`, `review_wait`, `owner_wait`. Work outranks
+`record`, `cut`, `build`, `verify`, `review_wait`, `owner_wait`, `paused`. Work outranks
 waiting: a minute counts as waiting for review, or waiting on the owner, only
-if nothing was being built or verified at the time. A minute with nothing
+if nothing was being built or verified at the time; `paused` (a usage-window
+pause) ranks last of all. A minute with nothing
 active at all is **unaccounted**. That is usually host sleep, a stopped seat,
 or a stall nobody recorded, and it is often the largest thing to fix.
 

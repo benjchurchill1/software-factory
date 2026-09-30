@@ -25,6 +25,12 @@ CONTRACT
   released    the seat (or a person) creates the arming's `stop` file, a cap is
               reached, the arming is older than MAX_AGE_H, or the arming file
               is deleted. A released stop is a real stop.
+  paused      the arming's `pause` file holds {"until": ISO-8601 UTC, "reason":
+              ...} with `until` in the future. The seat writes it when its
+              pre-flight says a usage window is spent: the stop is allowed and
+              not counted, so the hook never holds a seat open against a limit
+              it cannot get past. Once `until` has passed the file is ignored,
+              and the seat deletes it when it resumes.
 
 The block reason tells the seat to create its `stop` file when it halts on
 purpose (done, stalled, or waiting on a person). That keeps a deliberate halt
@@ -38,6 +44,7 @@ import json
 import os
 import subprocess
 import sys
+import datetime as dt
 import time
 from pathlib import Path
 
@@ -123,6 +130,20 @@ def transcript_has(path, marker):
     return False
 
 
+def paused(path):
+    """True while the pause file names a time still in the future."""
+    cfg = load(path)
+    if not cfg:
+        return False
+    try:
+        until = dt.datetime.fromisoformat(str(cfg.get("until")).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if until.tzinfo is None:
+        until = until.replace(tzinfo=dt.timezone.utc)
+    return until > dt.datetime.now(dt.timezone.utc)
+
+
 def main():
     try:
         payload = json.loads(sys.stdin.read() or "{}")
@@ -148,9 +169,10 @@ def main():
     armed, cfg = best
     state = armed.parent
     stopfile = state / "stop"
+    pausefile = state / "pause"
     countfile = state / "count.json"
 
-    if stopfile.exists():
+    if stopfile.exists() or paused(pausefile):
         allow()
     # Stale arming is not arming. A machine left overnight must not wake up
     # holding a seat open against a prompt nobody remembers writing.
@@ -210,7 +232,9 @@ def main():
           "If you are genuinely finished or genuinely blocked (the definition of done is met, "
           "§Stop conditions has fired, or a decision only the owner can take is in the way), "
           f"create {stopfile} with one line saying which of those it is, and stop. That file is "
-          "how a deliberate halt is told apart from drifting to a halt.")
+          "how a deliberate halt is told apart from drifting to a halt. If pre-flight said PAUSE "
+          f'(a usage window is spent), write {{"until": "<resume_at>", "reason": "usage"}} to '
+          f"{pausefile} and stop: the hook lets a paused seat stop until then.")
 
 
 if __name__ == "__main__":

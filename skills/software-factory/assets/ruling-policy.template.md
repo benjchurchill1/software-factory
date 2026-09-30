@@ -55,6 +55,24 @@ A row may be ruled **once**. A failure after its ruling is terminal: parked,
 never re-ruled, listed first in the handoff. That floor is what stops the
 ladder becoming the spin it exists to prevent.
 
+## Retiring a check
+
+The checks ledger and the never-together ledger only get longer unless a ruling
+says otherwise. That ruling is never the loop's: the owner, or the delegated
+reviewing seat, makes it, in the form above, and it names the entry's id (for
+example `C-12`). The retirement line cites the ruling's path, and the
+pre-barrier script refuses one that does not.
+
+A check is retired on one of two grounds, and the ruling says which:
+
+1. **It is measured wrong**: it fails on code that meets the criterion, shown
+   by a run, not argued. Contention is not that measurement; re-run it alone.
+2. **A stronger check covers it**, named in the ruling, already in the ledger
+   and active.
+
+"It slows the panels down" is not a ground: that is policy 2, a gate weakened
+to fit a measurement. Say so, and make the check cheaper instead.
+
 ## The rule that makes this safe
 
 **A lane that measures a ruling to be wrong is believed.** The measurement is

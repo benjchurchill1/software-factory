@@ -7,6 +7,16 @@ the product itself. The builder's self-report is never evidence.
 
 - [ ] The criterion quoted verbatim. Does what shipped meet the words, not a
       paraphrase of them?
+- [ ] The required clean rounds in a row at the lane's tip commit, each a fresh
+      panel, and each record opening with a `## Prediction` written before the
+      builder's claim was read. A round that read the claim first is not clean.
+- [ ] The ledger's checks for each lens were run or attempted, and the record
+      says which.
+- [ ] Every refutation the lane took that stood (contention ruled out) has a
+      proposed check: the failure class, its lens, and a `scripts/checks/`
+      script where one fits. Send it to the build seat to add at the record.
+- [ ] No committed test edited. A superseded test has its successor, which
+      names it, and a line in the supersessions register.
 - [ ] The panel ran the **caller-deletion** lens: the shipped caller was
       deleted and the row's own evidence went red. A green under deletion
       means the row is proved somewhere nobody reaches.

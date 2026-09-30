@@ -1,10 +1,18 @@
 {
-  "description": "Bounded keep-alive for an autonomous build-loop seat. Inert until a repo is armed with hooks/arm.py (state under ~/.claude/state/build-loop/).",
+  "description": "Two build-loop hooks, both inert until set up for a repo. Stop: a bounded keep-alive for the build seat, armed with hooks/arm.py (state under ~/.claude/state/build-loop/). PreToolUse: the test freeze, active only in a checkout that commits .claude/test-freeze.json.",
   "hooks": {
     "Stop": [
       {
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/build-loop-continue.py\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/test-freeze.py\"", "timeout": 10 }
         ]
       }
     ]

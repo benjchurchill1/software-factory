@@ -2,7 +2,7 @@
 # The checks that run after the serial merge and BEFORE the barrier's full check,
 # as ONE command with a one-line verdict per check.
 #
-#   bash scripts/pre-barrier.sh [--squashed <lane>]... [--trunk <b>] [--integration <b>]
+#   bash scripts/pre-barrier.sh [--squashed <lane>]... [--trunk <b>] [--integration <b>] [--wave <n>]
 #   bash scripts/pre-barrier.sh --dry-run              # print it all, run none
 #
 # WHY ONE SCRIPT AND NOT FIVE MEMORY NOTES. On the source build every check below
@@ -26,13 +26,27 @@
 #   3. artefacts: no trace.zip, *.har or .env* in any lane's diff against the
 #                   trunk, nor in the integration branch's. A tracked .env.example
 #                   is flagged too; a scan that whitelists is the next hole.
-#   4. typecheck: <TYPECHECK_COMMAND>; catches a keep-both conflict resolution
+#   4. tests: no committed test edited, and every deleted one superseded
+#                   by a successor that names it, with a record in the
+#                   supersessions register (guards.py tests; the test-freeze
+#                   hook is the early warning, this line is the guarantee).
+#   5. checks-ledger: <CHECKS_LEDGER> is append-only against the trunk, and
+#                   every retirement cites a ruling that names the check.
+#   6. together-ledger: the same for <NEVER_TOGETHER_PATH>.
+#   7. panels: every lane's tip has <CLEAN_ROUNDS> clean panel rounds in a row
+#                   at that exact commit, in the journal (guards.py panels).
+#   8. checks: every active check in the ledger with a script runs green on
+#                   the merged tree. A check that fails is a lesson recurring.
+#   9. typecheck: <TYPECHECK_COMMAND>; catches a keep-both conflict resolution
 #                   that left an entry unclosed, on the NEXT entry.
-#   5. registry: <REGISTRY_DUP_CHECK>; every shared-registry entry appears
+#  10. registry: <REGISTRY_DUP_CHECK>; every shared-registry entry appears
 #                   exactly once.
-#   6. shared: <SHARED_ONLY_SUITES>; the suites lanes cannot run (guard
+#  11. shared: <SHARED_ONLY_SUITES>; the suites lanes cannot run (guard
 #                   tests on the shared resource's own partition), run here on the
 #                   shared resource before the barrier launches.
+#
+# Lines 4 to 8 are the ratchet: with nobody reviewing every wave, the checks
+# only get stricter if a script refuses to let them get looser.
 #
 # READ-ONLY except for running the named commands. It merges, resets and deletes
 # nothing, and writes no file: the orchestrator tees its output into the wave's
@@ -48,20 +62,28 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONF="$ROOT/scripts/lane-cut.conf"
-DRY=0; TRUNK=""; INTEGRATION=""; SQUASHED=" "
+DRY=0; TRUNK=""; INTEGRATION=""; SQUASHED=" "; WAVE_ARG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1 ;;
     --trunk) TRUNK="${2:?}"; shift ;;
     --integration) INTEGRATION="${2:?}"; shift ;;
+    --wave) WAVE_ARG="${2:?}"; shift ;;
     --squashed) SQUASHED="$SQUASHED${2:?} "; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac; shift
 done
 [ -f "$CONF" ] && . "$CONF"
+WAVE="${WAVE_ARG:-${WAVE:-}}"
 TRUNK="${TRUNK:-<TRUNK_BRANCH>}"
 INTEGRATION="${INTEGRATION:-<INTEGRATION_BRANCH>}"
 LANE_GLOB="<LANE_BRANCH_GLOB>"
+GUARDS="$ROOT/scripts/guards.py"
+CHECKS_LEDGER="<CHECKS_LEDGER>"
+TOGETHER="<NEVER_TOGETHER_PATH>"
+CLEAN_ROUNDS="<CLEAN_ROUNDS>"
+STATE="<RUN_STATE_DIR>"
+case "$STATE" in /*) ;; *) STATE="$ROOT/$STATE" ;; esac
 [ -n "$TRUNK" ] && [ -n "$INTEGRATION" ] && [ -n "$LANE_GLOB" ] || { echo "REFUSE: no trunk/integration/lane glob: write scripts/lane-cut.conf or pass --trunk and --integration" >&2; exit 2; }
 ARTEFACTS='(^|/)(trace\.zip|[^/]*\.har|\.env[^/]*)$'
 
@@ -70,6 +92,10 @@ if [ "$DRY" -eq 1 ]; then
     "would list lanes: git for-each-ref refs/heads/$LANE_GLOB (excluding $INTEGRATION)" \
     "would run per lane: git merge-base --is-ancestor <lane> $INTEGRATION (declared squashed:${SQUASHED% })" \
     "would scan per lane and $INTEGRATION: git diff --name-only $TRUNK...<branch> for $ARTEFACTS" \
+    "would run guards.py tests --trunk $TRUNK" \
+    "would run guards.py ledger $CHECKS_LEDGER and $TOGETHER --trunk $TRUNK" \
+    "would run guards.py panels --rounds $CLEAN_ROUNDS on $STATE/journal.jsonl for every lane tip" \
+    "would run guards.py checks $CHECKS_LEDGER" \
     'would run <TYPECHECK_COMMAND>' \
     'would run <REGISTRY_DUP_CHECK>' \
     'would run <SHARED_ONLY_SUITES>'
@@ -111,7 +137,25 @@ for branch in ${LANES[@]+"${LANES[@]}"} "$INTEGRATION"; do
 done
 [ -z "$found" ] && pass "artefacts: none in $(( ${#LANES[@]} + 1 )) diffs" || fail "artefacts:$found"
 
-# -------------------------------------------------- 4-6. the named commands
+# ------------------------------------------------- 4-8. the ratchet (guards.py)
+# guards.py prints one verdict line of its own; its detail goes to stderr.
+guard() {
+  local out; out="$(python3 "$GUARDS" --root "$ROOT" "$@")"
+  local rc=$?
+  [ -n "$out" ] || out="FAIL $1: guards.py printed nothing (exit $rc)"
+  echo "$out"; [ "$rc" -eq 0 ] || FAILED=1
+}
+guard tests --trunk "$TRUNK"
+guard ledger "$CHECKS_LEDGER" --kind checks --trunk "$TRUNK"
+guard ledger "$TOGETHER" --kind together --trunk "$TRUNK"
+tips=()
+for lane in ${LANES[@]+"${LANES[@]}"}; do tips+=("${lane##*/}=$(git rev-parse "$lane")"); done
+if [ "${#tips[@]}" -eq 0 ]; then fail "panels: no lanes to check"
+else guard panels --journal "$STATE/journal.jsonl" --wave "${WAVE:-0}" --rounds "$CLEAN_ROUNDS" "${tips[@]}"; fi
+if [ -f "$CHECKS_LEDGER" ]; then guard checks "$CHECKS_LEDGER"
+else pass "checks: no ledger yet, nothing to run"; fi
+
+# -------------------------------------------------- 9-11. the named commands
 # Their own output goes to stderr, so stdout stays one line per check.
 ( <TYPECHECK_COMMAND> ) 1>&2 && pass "typecheck" || fail "typecheck"
 ( <REGISTRY_DUP_CHECK> ) 1>&2 && pass "registry" || fail "registry"

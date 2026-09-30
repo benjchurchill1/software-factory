@@ -12,12 +12,13 @@ can't see.
 
 | Skill | When | What it does |
 | --- | --- | --- |
-| `software-factory` | Once, before the build; again if a running build stalls on its environment | Quality-tests the requirements register and the definition of done, then primes eleven gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, and named seats. Then invokes `build-loop`. |
-| `build-loop` | Once, at the end of priming; again to fix the loop prompt's logic | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by an adversarial verify panel (up to three stages inside the wave), and then one serial barrier. Five gate counts ratchet: none may rise. |
+| `software-factory` | Once, before the build; again if a running build stalls on its environment | Quality-tests the requirements register and the definition of done, then primes thirteen gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter. Then invokes `build-loop`. |
+| `build-loop` | Once, at the end of priming; again to fix the loop prompt's logic | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by adversarial verify panels until two rounds in a row come back clean at the same commit (up to three build stages inside the wave), and then one serial barrier. Every refutation that stands becomes a check later waves apply. Five gate counts ratchet: none may rise. |
 | `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated **progress checklist**: road to done, the current wave lane by lane, the next queue, what waits on you, where each wave's time went, and history. |
 
-The plugin also registers a **keep-alive Stop hook** for the build seat. It
-does nothing until you arm it (see below).
+The plugin also registers two hooks, each inert until you set it up for a repo:
+a **keep-alive Stop hook** for the build seat, and a **test-freeze hook** that
+refuses edits to committed tests (see below).
 
 ## Where this came from, and what that does and doesn't show
 
@@ -52,6 +53,29 @@ aren't double-counted. Minutes where nothing was recorded show as
 **unaccounted**. Every bar adds up to the wave's real length, so the largest
 segment is the thing to fix. Point `timing.journal` in the monitor's config at
 the journal to turn it on.
+
+## Checks that only get stricter
+
+Nobody reviews every wave of an unattended build, so the verification has to
+tighten by itself and be unable to loosen quietly:
+
+- **Lessons become checks.** Every refutation that stands (contention ruled
+  out) is written to an append-only checks ledger as a failure class, with a
+  script where one fits. Later panels apply it and the barrier runs it. A check
+  leaves only by a ruling that names it, never the loop's own.
+- **Clean rounds.** A lane is finished when two fresh panels in a row find
+  nothing at the same commit. Each verifier writes its prediction before it
+  reads the builder's claim.
+- **Tests are superseded, never edited.** The test-freeze hook refuses an edit
+  to a committed test; the pre-barrier script fails a merge that makes one
+  anyway.
+- **Pre-flight.** Before each wave and each barrier, one script checks the
+  login, the usage window, the budget, disk, reboots and the generated config.
+  An expiring login stops the build cleanly, never mid-barrier. A spent usage
+  window pauses it until the reset.
+
+These are new in 0.3.0 and, unlike the rest, were not measured on the source
+build.
 
 ## Install
 
@@ -96,12 +120,31 @@ python3 hooks/arm.py disarm /path/to/repo
 - **Stops holding** when the seat writes its stop file (`arm` prints the path,
   and the hook tells the seat), when a cap is reached, or 72 hours after
   arming.
+- **Lets a paused seat stop** while its pause file names a time still to come.
+  The seat writes it when pre-flight says a usage window is spent; nothing is
+  counted, and the file is ignored once the time has passed.
 - **`--prompt-path`** tells the hook where the loop prompt lives if it isn't
   `docs/prompts/build-loop.md`.
 - Each repo has its own state directory under `~/.claude/state/build-loop/`, so
   builds on the same machine don't share counters or stop files. Re-arming
   clears a previous stop file and resets the counts. An arming written by an
   earlier version at `~/.claude/state/build-loop/armed.json` is still honoured.
+
+### The test-freeze hook
+
+Inert until the repo commits `.claude/test-freeze.json` (the factory drafts it
+at gate 12; you place and commit it):
+
+```json
+{"tests": ["tests/**", "**/*.spec.ts"], "base": "your-trunk-branch",
+ "supersessions": "docs/build/supersessions.jsonl"}
+```
+
+In that repo and its lane worktrees, an Edit or Write to a file matching
+`tests` that already exists on `base` is refused, with instructions to write a
+successor instead. Tests a lane creates are not frozen until merged. A shell
+command can still change a file, so the pre-barrier script's `tests` line is
+the guarantee and the hook is the early warning.
 
 ## Requirements
 
@@ -132,9 +175,11 @@ python3 skills/software-factory/scripts/verify-factory.py
 ```
 
 This renders the factory's shell templates into temporary git repos (including
-one at a path with a space) and exercises them, tests the keep-alive hook and
-its arming helper against real git, and checks the house style: UK spelling and
-no em dashes in the prose.
+one at a path with a space) and exercises them; tests `guards.py` (the ledgers,
+the test freeze, clean rounds, pacing and the login check) and the pre-flight
+script's exit codes; tests both hooks and the arming helper against real git,
+including a lane worktree; and checks the house style: UK spelling and no em
+dashes in the prose.
 
 That shows the scripts behave. Whether Claude follows the skills is a separate
 question, and each skill has evals for it in `skills/<name>/evals/`:

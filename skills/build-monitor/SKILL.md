@@ -83,7 +83,11 @@ due, not a minute-by-minute poll.
 - Read "Where the time went" on the page. If **unaccounted** is large, find
   out what the seat was doing (host sleep, a stopped seat, a stall) before
   anything else. If **waiting for review** is large, your own pace is the
-  bottleneck: review at each handback, not on your cadence.
+  bottleneck: review at each handback, not on your cadence. **Paused** is time
+  spent waiting for a usage window; if it is large, the wave is too big for the
+  window, so propose a narrower queue.
+- If the build seat stopped `auth-expiring`, the owner's list says to log in
+  again and record the time; lead with it.
 - If a barrier reds on a timeout in code no lane touched, suspect the host or
   the test estate before the tree. Ask for the one cell alone.
 
@@ -94,6 +98,11 @@ record, then the evidence, then look at the product yourself.
 `references/review-checklist.md` has the full list; the core is:
 
 - **The criterion, verbatim, against what shipped.** Not the self-report.
+- **Clean rounds, blind first.** The lane has the loop's clean rounds in a row
+  at its tip, and each round's record opens with its prediction, written
+  before it read the builder's claim.
+- **Lessons.** Each refutation that stood becomes a proposed check (class,
+  lens, and a script where one fits); send it to the build seat.
 - **UI lanes: screenshots at 390 and 1440 px** for every changed screen. Look
   for page length, truncated values, raw identifiers or ISO dates in user copy,
   a missing primary action, reflow when a drawer opens, silent caps on lists.
@@ -109,6 +118,10 @@ Answer with one of: **APPROVED**, **APPROVED with <exclusion> → wave N+1
 
 The ruling policy (`decisions/ruling-policy.md` from the factory) says what
 you may decide. Rule fast, in writing, with the smaller claim that is certain.
+Retiring an entry from the checks or never-together ledger is a ruling too,
+made only on the grounds the policy's §Retiring a check allows, and naming the
+entry. Never on "it slows the panels".
+
 If a question is the owner's (legal, commercial, a new register row), bring it
 to them as a recommendation they can answer yes or no to, and put it on the
 owner's list until they do.

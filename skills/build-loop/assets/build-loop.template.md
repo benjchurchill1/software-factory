@@ -58,7 +58,15 @@ reviewer can replay.
   encode it faithfully. <HOOK_NOTE: what is hook-enforced> If a test is
   genuinely wrong, supersede it: write the successor, name the predecessor in its
   header, record why, and let the orchestrator delete the predecessor at the
-  barrier. Never a quiet rewrite.
+  barrier. Never a quiet rewrite. The test-freeze hook refuses an edit to any
+  test file that exists on <BRANCH>, and `<PRE_BARRIER_COMMAND>` fails a merge
+  that edits a committed test, or deletes one without a record in
+  <SUPERSESSIONS_PATH> naming a successor that names it. The hook is the early
+  warning; the pre-barrier line is the guarantee.
+- **Checks only get stricter.** Never delete or edit a line of <CHECKS_LEDGER>
+  or <NEVER_TOGETHER_PATH>. An entry is retired only by a new line citing a
+  ruling that names it, and the loop never rules on its own checks
+  (§Lessons become checks).
 - **A PASS requires executed evidence**: a test run, a script output, an
   artefact path. "It should work" is a FAIL. Never mark your own row PASS from
   the builder seat: verification is a separate pass.
@@ -102,13 +110,26 @@ Anything else claiming BLOCKED is actually `stuck`: see anti-spin.
 
 ## The wave
 
-Each wave is: **derive state → frontier → parallel build → serial merge →
-parallel adversarial verify → record → commit.** Orchestrate it as a Workflow
+Each wave is: **pre-flight → derive state → frontier → parallel build → serial
+merge → parallel adversarial verify → record → commit.** Orchestrate it as a Workflow
 script with the shape `parallel(build) → barrier(merge + check) →
 parallel(verify)`. The barrier is the one deliberate serialisation point: a
 single shared <SINGLETON> means mutation must serialise; everything either side
 of it fans out to the concurrency cap.
 
+0. **Pre-flight.** Before cutting any lane, run `<PREFLIGHT_COMMAND> --queue`
+   with this wave's queue file, and before every barrier attempt run
+   `<PREFLIGHT_COMMAND> --barrier`. It prints one line per check (generated
+   files free of slots, disk, reboot, login, usage and budget, the
+   never-together ledger) and exits: **0** go; **1** FAIL, fix it and run it
+   again; **10** PAUSE, see §Pausing on a usage limit; **20** STOP, a person is
+   needed (the login expires before the step could finish, or the budget cannot
+   fund it): write the `auth-expiring` or `budget-exhausted` handoff, put the
+   action on the person's list, create the keep-alive stop file and stop;
+   **30** RECOVER, the host rebooted: run the recovery protocol below, then
+   `<PREFLIGHT_COMMAND> --ack-reboot`. Nothing launches on a non-zero exit. **A
+   barrier is never started that the login or the usage window cannot
+   finish.**
 1. **Derive state.** Read <PROGRESS_PATH> (one line per row, current verdict or
    `TODO`/`WIP`/`stuck`). If absent, seed every in-scope row `TODO`. Scoreboard
    existence does not mean bootstrap is complete. Until the checkpoint records
@@ -121,6 +142,8 @@ of it fans out to the concurrency cap.
    and whose subsystems are disjoint, not one row, the whole eligible set. Batch
    tightly-coupled rows as one work item. Cap the wave at the concurrency limit;
    prefer wide waves: wall-clock should be the slowest row, not the sum.
+   Never put two rows that share an entry in <NEVER_TOGETHER_PATH> in the same
+   wave; pre-flight refuses a queue that holds both.
    **The next wave's queue is drafted at this wave's open**, by the trunk owner
    and the monitor seat together, in `<EVIDENCE_DIR>/wave{N}/orchestrator/wave{N+1}-queue.md`
    (N the current wave): each lane with its rows and the falsifiers that would
@@ -139,11 +162,26 @@ of it fans out to the concurrency cap.
    files changed, tests added, and a self-report, which is never trusted as a
    verdict.
    **Multi-stage lanes.** Each lane's build is followed, before merge, by its
-   own adversarial panel (<LENSES>) against the lane's worktree. A lens that
-   refutes gets the lane a stage 2 (build, then panel again) on the same
-   worktree inside the same wave, and a stage 3, the last, if stage 2 is refuted. Only when
-   the last stage is refuted does the row return to retryable `WIP`; a
-   refutation costs a stage, not a wave. The monitor seat approves each lane
+   own adversarial panel (<LENSES>) against the lane's worktree. **A lane is
+   finished when <CLEAN_ROUNDS> panel rounds in a row come back clean at the
+   same lane commit.** Each round is a fresh panel that has not seen an earlier
+   round's findings; any commit to the lane resets the count to zero. A refuted
+   round ends the stage: the lane gets a stage 2 (build, then rounds again) on
+   the same worktree inside the same wave, and a stage 3, the last, if stage 2
+   is refuted. Rounds do not use up stages, and at most <CLEAN_ROUNDS> run per
+   stage. Only when the last stage is refuted does the row return to retryable
+   `WIP`; a refutation costs a stage, not a wave. Journal every round as
+   `{"type": "panel", "wave": N, "lane": L, "stage": k, "round": r, "commit":
+   "<full hash>", "verdict": "clean"|"refuted", "evidence": "<path>"}`;
+   `<PRE_BARRIER_COMMAND>` fails a lane whose tip lacks its clean rounds.
+   **Each verifier forms its view before it reads the claim.** A lens is handed
+   the row's criterion verbatim, the lane's diff, and the entries of
+   <CHECKS_LEDGER> for its lens, and nothing else. It writes a `## Prediction`
+   first (where this change would break, and how it will test that), runs the
+   row's checks and the ledger's, attacks, and only then reads the builder's
+   self-report, to test its claims rather than be guided by them. A round
+   whose record has no prediction written before the claim was read is not a
+   clean round. The monitor seat approves each lane
    from its evidence (and screenshots, for a lane that changes a screen) before
    it is merged. Merge a lane only after its handback: a lane's tip moves after
    its first commit.
@@ -176,7 +214,8 @@ of it fans out to the concurrency cap.
 5. **Parallel adversarial verify.** After the barrier, fan out verifiers against
    the merged state; each lane's own panel has already run, and this pass is
    the one against the merged tree. Every completed row gets a fresh-context
-   verifier told to REFUTE: run the row's named checks from scratch, then try to break the claim
+   verifier told to REFUTE: run the row's named checks and the ledger's checks
+   for its lens from scratch, then try to break the claim
    (<ATTACK_VECTORS>). High-stakes rows (<HIGH_STAKES_ROWS>) get a **panel of
    three lenses** (<LENSES>); the row passes only if no lens refutes it. The
    builder never writes its own PASS. A verifier failure returns the row to
@@ -219,6 +258,40 @@ its own, because the record afterwards looks like diligence. Before returning an
 FAIL from a suite that touches the <SINGLETON>: check for contention
 (<CONTENTION_CHECK>), re-run the row alone, and say in the finding that you did.
 
+## Lessons become checks
+
+Nobody reviews every wave, so the checks get stricter only if each refutation
+becomes a check that later waves apply. <CHECKS_LEDGER> is that record:
+append-only JSON lines committed on <BRANCH>, written by the trunk owner at the
+record. The monitor seat proposes entries; it does not write them.
+
+- **Every refutation that stands becomes an entry.** A refutation stands when
+  it survived §Contention is not refutation: contention checked, the row re-run
+  alone. A contention red never becomes a check. The entry names the failure
+  **class**, not the instance ("list endpoints filter by the caller's tenant",
+  not "invoice 42 shows another tenant"), the lens it belongs to, and the
+  evidence path of the refutation:
+  `{"op": "add", "id": "C-<n>", "wave": N, "class": "...", "lens": "...",
+  "source": "<evidence path>", "run": "scripts/checks/<name>.sh"}`.
+- **Mechanical beats prose.** Where the class can be tested by a command (a
+  grep, a script, a test pattern), `run` names a script under
+  `scripts/checks/` that exits non-zero when the class recurs; it runs on every
+  lane's panel and at every barrier (`<PRE_BARRIER_COMMAND>`'s `checks` line).
+  Where it cannot, the entry has no `run`, and every panel with that lens
+  attempts it and says in its record what it did.
+- **Added freely, removed only by a ruling.** A retirement is its own line,
+  `{"op": "retire", "id": "C-<n>", "ruling": "<decision path>"}`, citing a
+  ruling under <RULING_POLICY_PATH> that names the check. Only the owner or the
+  delegated reviewing seat rules on a check. `<PRE_BARRIER_COMMAND>` fails a
+  ledger that was edited rather than appended to, and a retirement without its
+  ruling.
+- **Collisions are lessons too.** When a barrier goes red because two rows'
+  lanes collided, add the pair to <NEVER_TOGETHER_PATH>,
+  `{"op": "add", "id": "T-<n>", "rows": ["<row id>", "<row id>"], "source":
+  "<barrier evidence>"}`, under the same append-only and ruling rules.
+- Record in the wave `## Log` which entries the wave added, and which checks
+  caught something.
+
 ## Build order
 
 <BUILD_ORDER: foundations before features, as a dependency-ordered list>
@@ -256,6 +329,15 @@ FAIL from a suite that touches the <SINGLETON>: check for contention
   anyway: flag `loop-stalled` at the top. Never idle-loop.
 - Workflow-level failures (an agent dying, a worktree conflict storm) degrade that
   wave to serial for the affected items; they do not stop the loop.
+- **The login is the one thing only a person can renew.** Pre-flight stops
+  the loop (exit 20) while there is still time to finish cleanly: never
+  mid-barrier, never mid-record. Write the `auth-expiring` handoff with the
+  wave's state, put "log in again, then record the time in
+  `<RUN_STATE_DIR>/auth-at`" on the person's list, create the keep-alive stop
+  file, and stop.
+- **A usage limit is a pause, not a stop** (§Pausing on a usage limit). A
+  paused wave is not a wave with no change: it does not count towards the
+  no-change stop.
 - Environment failure (<SINGLETON> down): attempt <RESTART_COMMAND> once; if still
   down, write an environment-stalled handoff retaining unresolved row verdicts
   (use `BLOCKED(environment)` only if on the closed list and its buildable part
@@ -287,6 +369,26 @@ reset budgets per wave or session. If remaining budget cannot fund the next
 operation plus the handoff reserve, stop dispatch, safely drain owned work,
 checkpoint, and write a `budget-exhausted` handoff. Only the user can raise caps.
 
+**The usage ledger.** Record actual usage as
+`{"type": "usage", "wave": N, "phase": P, "op": "<what ran>", "amount": x,
+"unit": "<unit>", "source": "<where it was read>"}`, in the one unit
+<SPEND_LIMIT> uses. Pre-flight paces from these: it takes the largest of the
+last three waves (or barriers) as the estimate for the next, and pauses or
+stops before a step it cannot fund. When a request is refused because a usage
+limit was reached, append `{"type": "rate_limit", "at": "<utc time>", "resets_at":
+"<utc time>"}` with the reset time the refusal gives; pre-flight pauses until then.
+
+### Pausing on a usage limit
+
+When pre-flight exits 10 it prints `resume_at <utc time>`. Start nothing new; let
+lanes already running finish their current stage. Append `{"type": "pause",
+"wave": N, "until": "<resume_at>", "reason": "usage"}` and open a `paused`
+phase; checkpoint the wave phase as `paused`. Write `{"until": "<resume_at>",
+"reason": "usage"}` to the keep-alive hook's pause file (the hook's message
+names its path), then <RESUME_MECHANISM>, and end the turn: the hook lets a
+paused seat stop until `resume_at`. On resume, delete the pause file, close the
+`paused` phase, run pre-flight again, and carry on from the checkpoint.
+
 Before each side effect append an intent with sequence, run/wave/row IDs,
 operation, base HEAD, lane path/commit, resource identity, evidence path and
 reserved budget; append its outcome afterwards. Checkpoint completed journal
@@ -298,8 +400,8 @@ then its actual hash afterwards. Never mark PASS from an interrupted verifier.
 **Phase timings.** Also append a phase event at the start and end of each step
 of the wave, so the owner can see where the wall-clock went:
 `{"type": "phase", "wave": N, "phase": P, "lane": L, "event": "start"|"end", "at": "<UTC ISO-8601>"}`.
-`P` is one of `cut`, `build`, `verify`, `review_wait`, `barrier`, `record` or
-`owner_wait`; `lane` is set for per-lane phases and empty otherwise; barrier
+`P` is one of `cut`, `build`, `verify`, `review_wait`, `barrier`, `record`,
+`owner_wait` or `paused`; `lane` is set for per-lane phases and empty otherwise; barrier
 events carry `"attempt": k`. `review_wait` runs from a lane's handback to the
 monitor seat's verdict. `owner_wait` runs from escalating a question to the
 owner until it is answered. These are the same single-writer journal, written
@@ -307,7 +409,8 @@ at the moment the step starts or ends, never reconstructed later. At the wave
 record, end any phase still open. Timing events never gate work: a missing one
 is a gap on the progress page, not a stop condition.
 
-On restart, establish that the previous owner is inactive; if ownership is
+On restart, and whenever pre-flight exits 30 because the host rebooted,
+establish that the previous owner is inactive; if ownership is
 uncertain stop with a handoff. Read checkpoint plus the journal tail and inspect
 git status/history, lane paths, process identity/start time, tagged backends
 and migration ledger. A numeric PID alone does not prove ownership; do not
@@ -352,7 +455,15 @@ every seat and are not re-derived by a lane.
   edited by hand. <RECORD_CAPS>.
 - **Pre-barrier.** `<PRE_BARRIER_COMMAND>` runs after the serial merge and its
   mutations and before <CHECK_COMMAND>, once per attempt; it prints one PASS or FAIL line
-  per check and nothing launches while any line is FAIL.
+  per check and nothing launches while any line is FAIL. Its ratchet lines
+  (tests, both ledgers, clean rounds, the ledger's checks) are how the checks
+  get stricter with nobody watching.
+- **Pre-flight.** `<PREFLIGHT_COMMAND>` runs at wave open and before every
+  barrier attempt. The rig doc's §Disk and reboots and §Login and usage say
+  what it measures and where.
+- **The test freeze.** `.claude/test-freeze.json` names the test files; the
+  plugin's test-freeze hook reads it. It is the owner's file, and the loop
+  never edits it.
 - **The trunk.** <TRUNK_OWNER> merges, records and commits; every other seat
   proposes and messages. The monitor seat (`build-monitor`) approves each lane
   before merge and never writes into the shared checkout while a barrier runs.

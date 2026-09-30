@@ -258,7 +258,9 @@ def history(repo, cfg):
 # would overcount. Instead every minute of a wave goes to the highest-priority
 # phase active in that minute: work outranks waiting. A minute with nothing
 # active is "unaccounted": sleep, a stopped seat, a stall nobody recorded.
-PHASES = ["barrier", "record", "cut", "build", "verify", "review_wait", "owner_wait"]
+# "paused" is a usage-window pause the seat recorded; it ranks last, so a
+# minute counts as paused only if nothing else was happening.
+PHASES = ["barrier", "record", "cut", "build", "verify", "review_wait", "owner_wait", "paused"]
 UNACCOUNTED = "unaccounted"
 
 
