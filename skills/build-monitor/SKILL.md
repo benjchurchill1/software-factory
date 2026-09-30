@@ -80,6 +80,10 @@ due, not a minute-by-minute poll.
 - If agents died with "[Request interrupted]", check host sleep first with
   the rig doc's "did it sleep?" command for this OS, then tell the build seat
   to renew the hold.
+- Read "Where the time went" on the page. If **unaccounted** is large, find
+  out what the seat was doing (host sleep, a stopped seat, a stall) before
+  anything else. If **waiting for review** is large, your own pace is the
+  bottleneck: review at each handback, not on your cadence.
 - If a barrier reds on a timeout in code no lane touched, suspect the host or
   the test estate before the tree. Ask for the one cell alone.
 
@@ -147,6 +151,8 @@ The page shows:
   approved, merged), barrier attempts, recorded, pushed.
 - **The next queue.**
 - **What waits on the owner.**
+- **Where the time went**: each wave's wall-clock split by phase, from the
+  build seat's journal (`references/progress-checklist.md` says how).
 - **History**: PASS per green wave and barrier attempts per wave.
 
 Everything except the owner's list is derived. Never hand-edit the page.
@@ -162,6 +168,9 @@ reporting to the owner, lead with this list.
 
 - **"Where are we?"** Regenerate and republish, then answer in three lines:
   done conditions met, current wave and barrier state, what waits on them.
+- **"Why is it slow?"** Regenerate, then name the largest segment of the last
+  few waves' time and the one change that would shrink it. Use the numbers on
+  the page; don't estimate.
 - **"What's left?"** The unticked done conditions with counts, then the queue.
 - **"Is it stuck?"** Apply the loop's stop conditions as written: three build
   waves with no terminal-row or gate movement, or three red barrier attempts

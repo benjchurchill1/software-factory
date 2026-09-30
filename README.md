@@ -14,7 +14,7 @@ can't see.
 | --- | --- | --- |
 | `software-factory` | Once, before the build; again if a running build stalls on its environment | Quality-tests the requirements register and the definition of done, then primes eleven gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, and named seats. Then invokes `build-loop`. |
 | `build-loop` | Once, at the end of priming; again to fix the loop prompt's logic | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by an adversarial verify panel (up to three stages inside the wave), and then one serial barrier. Five gate counts ratchet: none may rise. |
-| `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated **progress checklist**: road to done, the current wave lane by lane, the next queue, what waits on you, and history. |
+| `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated **progress checklist**: road to done, the current wave lane by lane, the next queue, what waits on you, where each wave's time went, and history. |
 
 The plugin also registers a **keep-alive Stop hook** for the build seat. It
 does nothing until you arm it (see below).
@@ -41,6 +41,17 @@ derived at the end), and the done sequence had not been run. What it does show:
 - Over waves 101 to 112, with the monitor seat and multi-stage lanes in place,
   12 waves went green in about 74 hours, 7 of them at the first barrier
   attempt. Several changes landed together, so no single one can claim that.
+
+## Where the time goes
+
+The build seat journals a start and end event for each step of a wave: cutting
+lanes, building, verify panels, waiting for review, barrier attempts, the record,
+and waiting on you. The progress page splits each wave's wall-clock across those
+steps, giving every minute to the busiest step active in it, so parallel lanes
+aren't double-counted. Minutes where nothing was recorded show as
+**unaccounted**. Every bar adds up to the wave's real length, so the largest
+segment is the thing to fix. Point `timing.journal` in the monitor's config at
+the journal to turn it on.
 
 ## Install
 
@@ -128,7 +139,7 @@ no em dashes in the prose.
 That shows the scripts behave. Whether Claude follows the skills is a separate
 question, and each skill has evals for it in `skills/<name>/evals/`:
 `evals.json` holds task prompts with assertions, and `trigger-evals.json` holds
-twenty queries per skill for testing that the right skill fires. The trigger
+twenty-one queries per skill for testing that the right skill fires. The trigger
 sets are generated from one list, `evals/triggers.json`, so each skill is
 tested against the other two's near-misses:
 

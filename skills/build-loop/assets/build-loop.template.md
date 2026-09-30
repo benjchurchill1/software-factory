@@ -295,6 +295,18 @@ row owners, failure counts, stuck/retry history and budget totals after each
 barrier, verification, record and commit. Record commit intent before commit,
 then its actual hash afterwards. Never mark PASS from an interrupted verifier.
 
+**Phase timings.** Also append a phase event at the start and end of each step
+of the wave, so the owner can see where the wall-clock went:
+`{"type": "phase", "wave": N, "phase": P, "lane": L, "event": "start"|"end", "at": "<UTC ISO-8601>"}`.
+`P` is one of `cut`, `build`, `verify`, `review_wait`, `barrier`, `record` or
+`owner_wait`; `lane` is set for per-lane phases and empty otherwise; barrier
+events carry `"attempt": k`. `review_wait` runs from a lane's handback to the
+monitor seat's verdict. `owner_wait` runs from escalating a question to the
+owner until it is answered. These are the same single-writer journal, written
+at the moment the step starts or ends, never reconstructed later. At the wave
+record, end any phase still open. Timing events never gate work: a missing one
+is a gap on the progress page, not a stop condition.
+
 On restart, establish that the previous owner is inactive; if ownership is
 uncertain stop with a handoff. Read checkpoint plus the journal tail and inspect
 git status/history, lane paths, process identity/start time, tagged backends

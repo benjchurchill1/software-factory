@@ -368,7 +368,7 @@ esac
                        "journal.jsonl", "checkpoint.json", "budget-exhausted", "<WAVE_SPEND_LIMIT>",
                        "original deadline", "migration ID/checksum", "<LANE_CUT_COMMAND>",
                        "<PRE_BARRIER_COMMAND>", "attempt 3 is a reduction", "Multi-stage lanes",
-                       "never `git revert -m 1`", "<DEPLOY_BRANCH>"]:
+                       "never `git revert -m 1`", "<DEPLOY_BRANCH>", '"type": "phase"', "review_wait", "owner_wait"]:
             self.assertIn(clause, " ".join(loop.split()))
         conventions = (LOOP / "assets/build-conventions.template.md").read_text()
         for clause in ["## Seats", "`build-monitor`", "isolation: 'worktree'"]:
@@ -500,6 +500,84 @@ class KeepAliveHook(unittest.TestCase):
         out = subprocess.run([sys.executable, str(HOOKS / "build-loop-continue.py")],
                              input="not json", env=self.env, capture_output=True, text=True)
         self.assertEqual((out.returncode, out.stdout), (0, ""))
+
+
+class PhaseTimings(unittest.TestCase):
+    """progress.py's "where the time went": priority attribution over journal phases."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "progress", SKILL.parent / "build-monitor" / "scripts" / "progress.py")
+        cls.p = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.p)
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="timing fixture ")
+        self.addCleanup(self.temp.cleanup)
+        self.journal = Path(self.temp.name) / "journal.jsonl"
+        self.cfg = {"timing": {"journal": str(self.journal)}, "history": {"max": 30}}
+
+    def write(self, *events, junk=False):
+        lines = [json.dumps({"type": "phase", "wave": w, "phase": ph, "lane": lane,
+                             "event": ev, "at": "2026-09-30T" + at + ":00Z"})
+                 for w, ph, lane, ev, at in events]
+        if junk:
+            lines += ["not json", json.dumps({"type": "intent", "op": "merge"}),
+                      json.dumps({"type": "phase", "wave": 1, "phase": "lunch", "event": "start",
+                                  "at": "2026-09-30T10:00:00Z"}),
+                      json.dumps({"type": "phase", "wave": 1, "phase": "build", "lane": "zz",
+                                  "event": "end", "at": "2026-09-30T10:05:00Z"})]
+        self.journal.write_text("\n".join(lines) + "\n")
+
+    def at(self, hhmm):
+        import datetime as dt
+        return dt.datetime.fromisoformat("2026-09-30T" + hhmm + ":00+00:00")
+
+    def wave(self, n, current=None, now="12:00"):
+        data = self.p.timings("/", self.cfg, current, now=self.at(now))
+        return next(w for w in data["waves"] if w["wave"] == n)
+
+    def test_work_outranks_waiting_and_gaps_are_unaccounted(self):
+        self.write((1, "build", "a", "start", "10:00"), (1, "build", "b", "start", "10:10"),
+                   (1, "build", "b", "end", "10:30"), (1, "verify", "b", "start", "10:30"),
+                   (1, "build", "a", "end", "10:40"), (1, "review_wait", "a", "start", "10:40"),
+                   (1, "verify", "b", "end", "10:50"), (1, "review_wait", "a", "end", "11:00"),
+                   (1, "barrier", "", "start", "11:20"), (1, "barrier", "", "end", "11:50"),
+                   (1, "record", "", "start", "11:50"), (1, "record", "", "end", "11:55"),
+                   junk=True)
+        w = self.wave(1)
+        self.assertEqual(w["phases"], {"build": 40, "verify": 10, "review_wait": 10,
+                                       "unaccounted": 20, "barrier": 30, "record": 5})
+        self.assertEqual(w["span_min"], 115)
+        self.assertEqual(sum(w["phases"].values()), w["span_min"])
+        self.assertEqual(w["top"], "build")
+        self.assertEqual(w["slowest_build"], {"lane": "a", "min": 40})
+        self.assertEqual(w["open"], [])
+
+    def test_open_phase_runs_to_now_only_in_the_current_wave(self):
+        self.write((1, "build", "a", "start", "09:00"), (1, "build", "b", "start", "09:00"),
+                   (1, "build", "b", "end", "09:30"),            # lane a crashed, never ended
+                   (2, "owner_wait", "", "start", "11:00"))
+        self.assertEqual(self.wave(1, current=2)["span_min"], 30)
+        self.assertEqual(self.wave(1, current=2)["open"], ["build/a"])
+        current = self.wave(2, current=2, now="11:45")
+        self.assertEqual(current["phases"], {"owner_wait": 45})
+        self.assertTrue(current["current"])
+
+    def test_barrier_attempts_are_separate_intervals(self):
+        self.cfg["timing"]["journal"] = str(self.journal)
+        lines = [json.dumps({"type": "phase", "wave": 3, "phase": "barrier", "attempt": a,
+                             "event": ev, "at": "2026-09-30T" + t + ":00Z"})
+                 for a, ev, t in [(1, "start", "10:00"), (1, "end", "10:40"),
+                                  (2, "start", "11:00"), (2, "end", "11:30")]]
+        self.journal.write_text("\n".join(lines) + "\n")
+        self.assertEqual(self.wave(3)["phases"], {"barrier": 70, "unaccounted": 20})
+
+    def test_absent_config_and_unreadable_journal(self):
+        self.assertIsNone(self.p.timings("/", {}, 1))
+        self.assertIn("error", self.p.timings("/", self.cfg, 1))
 
 
 class HouseStyle(unittest.TestCase):

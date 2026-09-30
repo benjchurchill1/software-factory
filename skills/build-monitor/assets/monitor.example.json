@@ -57,6 +57,9 @@
     "record_regex": "^wave {N} record",
     "max": 30
   },
+  "timing": {
+    "journal": "<RUN_STATE_DIR>/journal.jsonl"
+  },
   "owner_list": "owner-list.md",
   "out": "progress.html",
   "artifact_url": ""

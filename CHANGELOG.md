@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- **Where the time went.** The loop prompt now has the build seat journal a start and end `phase` event for each step (`cut`, `build`, `verify`, `review_wait`, `barrier`, `record`, `owner_wait`). `progress.py` gives each minute of a wave to the highest-priority active phase (work outranks waiting) and reports gaps as unaccounted, so each wave's split adds up to its real span. The progress page shows the current wave as a stacked bar with the largest cost named, and the last twelve waves for comparison. Enabled by `timing.journal` in `monitor.json`.
+- `build-monitor` reads the new section on each pass and answers "why is it slow?" from it; one new task eval and one trigger query.
+- Fixed a layout bug present since 0.1.0: at phone width the progress page scrolled sideways because the wave table's minimum width stretched the whole column. It now scrolls inside its own panel.
+- Self-test: 26 tests (from 22).
+
 ## 0.2.0
 
 ### Keep-alive hook
