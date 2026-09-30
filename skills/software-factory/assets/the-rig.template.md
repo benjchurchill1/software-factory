@@ -1,4 +1,4 @@
-# The rig — <PROJECT>
+# The rig: <PROJECT>
 
 The machine the autonomous build runs on, its memory budget, and what must not
 run on it. Measured on <DATE>, not estimated.
@@ -10,7 +10,7 @@ run on it. Measured on <DATE>, not estimated.
 | Machine | <MACHINE> |
 | Total memory | <TOTAL_GB> GB |
 | Cores | <CORES> |
-| Dedicated to this build? | <DEDICATED: yes / no — and if no, what else it serves> |
+| Dedicated to this build? | <DEDICATED: yes / no, and if no, what else it serves> |
 
 ## The memory budget
 
@@ -52,9 +52,9 @@ list, it is a cap:
 Each of these was measured resident on the box and each is worth more than a
 gigabyte:
 
-- <APP_1> — <GB> GB
-- <APP_2> — <GB> GB
-- <APP_3> — <GB> GB
+- <APP_1>: <GB> GB
+- <APP_2>: <GB> GB
+- <APP_3>: <GB> GB
 
 Quitting them is not closing their windows: a closed window keeps the process.
 Measured on one build, fully quitting three desktop applications took free
@@ -62,7 +62,7 @@ memory from 0.1 GB to 2.9 GB in three minutes, and the barrier that followed
 was the first green one in two days.
 
 **If a person works on this box**, the build and the person are competing, and
-the build loses silently — as slow queries, as timeouts in performance cells,
+the build loses silently: as slow queries, as timeouts in performance cells,
 as a browser suite that dies mid-run. Prefer headless: <HOW_THIS_BOX_IS_REACHED>.
 
 ## The pre-launch check
@@ -74,7 +74,7 @@ threshold:
     <FREE_MEMORY_COMMAND>   # and below <FREE_THRESHOLD_GB> GB free
     <RUNTIME_HEALTH_COMMAND>
 
-A check launched into swap does not fail honestly. It fails as timeouts in
+A check launched into swap does not fail cleanly. It fails as timeouts in
 whichever cells happen to be slowest, which reads exactly like a product
 regression and costs a wave of diagnosis. **Refusing to launch is cheaper than
 diagnosing a red that was never about the product.**
@@ -85,19 +85,24 @@ A sleeping host pauses timers and kills in-flight agent requests. Measured on
 one build: five build agents in a row died "[Request interrupted]" in one
 lane; the log showed the Mac entering maintenance sleep on AC power, and 100
 seconds of `sleep` had taken over ten minutes of wall time. Before launching
-lanes or a barrier:
+lanes or a barrier, hold the host awake and confirm the hold. Keep the rows for
+this rig's OS and delete the others:
 
-    caffeinate -dimsu -t 21600          # in the background; six hours
-    pmset -g assertions                 # PreventSystemSleep must read 1
+| OS | Hold awake (background, six hours) | Confirm the hold | Did it sleep? |
+| --- | --- | --- | --- |
+| macOS | `caffeinate -dimsu -t 21600 &` | `pmset -g assertions` shows `PreventSystemSleep 1` | `pmset -g log \| grep -E 'Sleep\|Wake'` |
+| Linux (systemd) | `systemd-inhibit --what=sleep:idle --why=build-loop sleep 21600 &` | `systemd-inhibit --list` names `build-loop` | `journalctl -b \| grep -iE 'suspend\|sleep'` |
+| Windows / WSL | `powercfg /change standby-timeout-ac 0` (restore it afterwards) | `powercfg /requests` | `powercfg /sleepstudy` |
 
-When agents die "[Request interrupted]", check `pmset -g log | grep -E
-'Sleep|Wake'` before any other theory. (macOS; on another OS, substitute its
-equivalents and record them here.)
+Only the macOS row was exercised on the source build; the others are the
+standard equivalents and should be checked once on this rig before relying on
+them. When agents die "[Request interrupted]", run the "did it sleep?" check
+before any other theory.
 
 ## When the runtime wedges
 
 Measured twice on one build, three to ten hours lost each time, both under
-memory pressure. Check the layers in order before restarting one — restarting
+memory pressure. Check the layers in order before restarting one: restarting
 the wrong layer spends the one attempt the stop rule allows:
 
 1. <RUNTIME_VERSION_COMMAND> prints a server version

@@ -1,10 +1,10 @@
 {
-  "description": "Bounded keep-alive for an autonomous build-loop seat. Inert until ~/.claude/state/build-loop/armed.json exists.",
+  "description": "Bounded keep-alive for an autonomous build-loop seat. Inert until a repo is armed with hooks/arm.py (state under ~/.claude/state/build-loop/).",
   "hooks": {
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/build-loop-continue.sh\"", "timeout": 10 }
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/build-loop-continue.py\"", "timeout": 10 }
         ]
       }
     ]

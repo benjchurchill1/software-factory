@@ -1,4 +1,4 @@
-# Ruling policy — <PROJECT>
+# Ruling policy: <PROJECT>
 
 Standing delegation for questions the build raises and may not answer itself.
 Written once, before the first wave. Amended only by <OWNER>.
@@ -40,7 +40,7 @@ Thirty to seventy lines. No essays.
 
     # <RULING_SENTENCE>
     <DATE>. **Decided under <OWNER>'s delegation of <DATE>**, by the reviewing
-    seat; written to be vetoed. Answers **<ID> — "<TITLE_VERBATIM>"**.
+    seat; written to be vetoed. Answers **<ID>: "<TITLE_VERBATIM>"**.
     ## The question        (2-5 lines, in the escalation's own framing)
     ## The ruling          (imperative, numbered if several parts)
     ## Why                 (measured facts + which policy + the norm cited)
@@ -51,7 +51,7 @@ Thirty to seventy lines. No essays.
 
 ## The floor
 
-A row may be ruled **once**. A failure after its ruling is terminal — parked,
+A row may be ruled **once**. A failure after its ruling is terminal: parked,
 never re-ruled, listed first in the handoff. That floor is what stops the
 ladder becoming the spin it exists to prevent.
 

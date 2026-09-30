@@ -2,7 +2,7 @@
 
 Read while filling the templates. Every section below exists because a loop
 without it fails in a specific, observed way. Knowing the failure is what decides
-whether a section can be trimmed for a given project — trim the defence only when
+whether a section can be trimmed for a given project: trim the defence only when
 the project cannot suffer the failure.
 
 ## Contents
@@ -20,10 +20,10 @@ the project cannot suffer the failure.
 **Defends against:** the loop redesigning the product when a requirement is
 inconvenient.
 
-"You implement, test and assess — you do not redesign." Autonomous agents faced
+"You implement, test and assess: you do not redesign." Autonomous agents faced
 with a hard row will reliably find an easier row nearby and build that instead,
-reporting progress the whole way. The separation of powers — design decided
-elsewhere, the loop only satisfying it — is what makes the progress number mean
+reporting progress the whole way. The separation of powers (design decided
+elsewhere, the loop only satisfying it) is what makes the progress number mean
 anything.
 
 ## Ground truth
@@ -32,8 +32,8 @@ anything.
 
 An ordered read list, executed at the start of every wave. The order matters: the
 contract first, the fixed architecture second, explanatory docs third. State must
-be derivable from the repo alone — the scoreboard, the migrations directory, git
-history — never from what the loop remembers. This is what makes a killed session
+be derivable from the repo alone (the scoreboard, the migrations directory, git
+history), never from what the loop remembers. This is what makes a killed session
 resumable by pasting the prompt again, and it is worth protecting: any rule that
 requires the loop to remember something across waves is a rule that will break.
 
@@ -71,10 +71,10 @@ a loop asked to judge its own completeness will judge generously.
 **Defends against:** the most respectable way for a loop to stop working.
 
 `BLOCKED` is the label a stalled loop reaches for, because it sounds like
-diligence. Enumerate the legitimate blockers — each with what a human must
+diligence. Enumerate the legitimate blockers: each with what a human must
 supply, and what gets built in the meantime (an interface, a fake, a mock-based
 test proving the contract). Then: *anything not on this list is not blocked, it
-is stuck* — and stuck has an anti-spin rule that blocked does not.
+is stuck*, and stuck has an anti-spin rule that blocked does not.
 
 The buildable-part rule is what stops the list becoming a dumping ground. A
 blocked row still ships its interface and its fake-backed tests; only the residue
@@ -104,15 +104,15 @@ apply migrations once, regenerate anything derived, run the full check on the
 merged tree. Everything either side fans out.
 
 Guard it against silent success. A migration tool that records a zero-byte file
-as applied, a deploy that returns 200 having done nothing — assert the artefact
+as applied, a deploy that returns 200 having done nothing: assert the artefact
 is non-empty before applying and that its objects exist afterwards. "The command
 exited zero" is not evidence the thing happened.
 
 Red at the barrier means fix forward if trivial, otherwise drop the item back to
 in-progress and re-merge without it. Never commit red.
 
-Bound it: three attempts, and the third is a reduction — drop the lanes carrying
-the failures and re-merge the rest — never a repair. A repair at attempt 3 can
+Bound it: three attempts, and the third is a reduction (drop the lanes carrying
+the failures and re-merge the rest), never a repair. A repair at attempt 3 can
 fix the cause it was cut for and go red on a new one, stranding every good lane
 in the merge. (Source build: wave 109 did exactly that and took six attempts.)
 Run the mechanical pre-barrier checks before attempt 1, so the barrier is never
@@ -124,7 +124,7 @@ found.
 **Defends against:** the builder's own account of its work.
 
 Fresh context, told to refute rather than confirm: run the row's checks from
-scratch, then attack — wrong tenant, missing permission, direct write bypassing
+scratch, then attack: wrong tenant, missing permission, direct write bypassing
 the interface, concurrent submission, replayed request. High-stakes rows get a
 panel of distinct lenses rather than three identical sceptics, because redundancy
 catches less than diversity does.
@@ -137,8 +137,8 @@ Two verifier failures on a row make it stuck. One makes it in-progress again.
 resource.
 
 State the isolation *and its limits*. Per-record namespacing separates records;
-it almost never separates the resource itself. Whole-resource operations — schema
-changes, truncations, global config, rate limits — are scoped by nothing, and
+it almost never separates the resource itself. Whole-resource operations (schema
+changes, truncations, global config, rate limits) are scoped by nothing, and
 where they queue, everything behind them queues too.
 
 Three rules follow, and they are cheap to write and expensive to omit:
@@ -161,7 +161,7 @@ Three rules follow, and they are cheap to write and expensive to omit:
 A loop that treats red as evidence, and that is empowered to supersede tests on
 evidence, will retire sound tests when the machine is merely busy. It does this
 carefully, with a written rationale, and the record afterwards looks like
-diligence — which is why nothing downstream catches it.
+diligence, which is why nothing downstream catches it.
 
 Two defences, both required:
 
@@ -208,5 +208,5 @@ contracts; they are not claims of automatic crash safety.
 
 The progress file is read by someone who was not watching. Plain verdicts, real
 evidence paths, no cheerleading. A row that limps is a row that fails. The loop's
-entire value is that its PASS means something — every sentence of encouragement
+entire value is that its PASS means something: every sentence of encouragement
 in the record is a small withdrawal from that.

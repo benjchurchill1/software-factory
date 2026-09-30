@@ -9,7 +9,7 @@
 #   bash scripts/lane-cut.sh status                 # cut lanes and ranges
 #
 # WHY ONE SCRIPT AND NOT TWO CONVENTIONS. The source build had both conventions
-# written down — prove your base; take your migration number from the brief —
+# written down: prove your base; take your migration number from the brief:
 # and both recurred: 119 of 188 worktrees cut at a commit from a DIFFERENT
 # PROJECT (twelve of twelve lanes in one wave affected), and four of eleven
 # lanes choosing the same migration number in one wave, then two pairs again
@@ -43,7 +43,7 @@ done
 [ -f "$CONF" ] && . "$CONF"
 TRUNK="${TRUNK:-${TRUNK_BRANCH:-}}"; WAVE="${WAVE:-${WAVE:-}}"
 LANE_ROOT="${LANE_ROOT:-<LANE_ROOT_DEFAULT>}"
-[ -n "$TRUNK" ] && [ -n "$WAVE" ] || { echo "REFUSE: no trunk/wave — write scripts/lane-cut.conf or pass --trunk and --wave" >&2; exit 2; }
+[ -n "$TRUNK" ] && [ -n "$WAVE" ] || { echo "REFUSE: no trunk/wave: write scripts/lane-cut.conf or pass --trunk and --wave" >&2; exit 2; }
 [[ "$WAVE" =~ ^[1-9][0-9]*$ ]] || { echo "invalid wave" >&2; exit 2; }
 [[ "$LANE" =~ ^[a-z][a-z0-9_]{0,47}$ ]] || { echo "invalid lane: use [a-z][a-z0-9_]{0,47}" >&2; exit 2; }
 [ -z "$RANGE_START" ] || [[ "$RANGE_START" =~ ^[1-9][0-9]*$ ]] || { echo "invalid range start" >&2; exit 2; }
@@ -72,7 +72,7 @@ else
 fi
 
 # ------------------------------------------------------- 2. dependency links
-# The links or installs a fresh tree needs — e.g. node_modules symlinks per
+# The links or installs a fresh tree needs: e.g. node_modules symlinks per
 # workspace package, a vendored toolchain. Never a network install per lane.
 for d in <DEPENDENCY_LINK_DIRS>; do
   do_ ln -sfn "$ROOT/$d/node_modules" "$WT/$d/node_modules"
@@ -94,8 +94,8 @@ fi
   echo "== base proof $LANE $(date -u +%FT%TZ) =="
   if [ "$DRY" -eq 0 ]; then
     git -C "$WT" merge-base --is-ancestor "$TIP" HEAD && echo "ancestry OK" || { echo "ANCESTRY FAILED: $TIP is not an ancestor of the new tree"; exit 1; }
-    for d in <EXPECTED_DIRS>; do [ -d "$WT/$d" ] && echo "present $d" || { echo "MISSING $d — wrong tree"; exit 1; }; done
-    (cd "$WT" && <TYPECHECK_COMMAND>) && echo "typecheck OK" || { echo "TYPECHECK FAILED — a broken install, most likely"; exit 1; }
+    for d in <EXPECTED_DIRS>; do [ -d "$WT/$d" ] && echo "present $d" || { echo "MISSING $d: wrong tree"; exit 1; }; done
+    (cd "$WT" && <TYPECHECK_COMMAND>) && echo "typecheck OK" || { echo "TYPECHECK FAILED: a broken install, most likely"; exit 1; }
     (cd "$WT" && <HARNESS_LOADS_COMMAND>) && echo "harness loads" || { echo "HARNESS DID NOT LOAD"; exit 1; }
   else
     echo "(dry run: proof not executed)"
@@ -103,7 +103,7 @@ fi
 } | tee "$PROOF"
 
 # ------------------------------------------------------ 4. identifier range
-# How this project allocates ranges — migration numbers, escalation ids, port
+# How this project allocates ranges: migration numbers, escalation ids, port
 # blocks. The ledger is the single source; a lane's own check refuses a file
 # outside its range.
 if [ -f "$LEDGER" ] && grep -q "\"lane\": *\"$LANE\"" "$LEDGER"; then

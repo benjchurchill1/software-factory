@@ -55,5 +55,5 @@ One line the build seat can quote in the merge commit:
 
 - `APPROVED`
 - `APPROVED with <excluded leg> → wave N+1 <lane>`
-- `stage <k>: <change> — falsifier: <measurement that would prove it wrong>`
+- `stage <k>: <change>: falsifier: <measurement that would prove it wrong>`
 - `HOLD: <reason>`

@@ -15,22 +15,22 @@
 # by not invoking it is not a check.
 #
 # WHAT IT RUNS, in order, each printed as PASS or FAIL:
-#   1. head       — the working tree is the integration branch; the later checks
+#   1. head: the working tree is the integration branch; the later checks
 #                   run against the working tree, so on any other branch they
 #                   mean nothing.
-#   2. ancestry   — every lane branch matching <LANE_BRANCH_GLOB> is an ancestor
+#   2. ancestry: every lane branch matching <LANE_BRANCH_GLOB> is an ancestor
 #                   of the integration branch. A MISSING is a stale merge: merge
 #                   only after the lane's handback. A lane squash-merged on
 #                   purpose (e.g. to leave a trace out) is declared with
 #                   --squashed <lane> and printed as such, never silently skipped.
-#   3. artefacts  — no trace.zip, *.har or .env* in any lane's diff against the
+#   3. artefacts: no trace.zip, *.har or .env* in any lane's diff against the
 #                   trunk, nor in the integration branch's. A tracked .env.example
 #                   is flagged too; a scan that whitelists is the next hole.
-#   4. typecheck  — <TYPECHECK_COMMAND>; catches a keep-both conflict resolution
+#   4. typecheck: <TYPECHECK_COMMAND>; catches a keep-both conflict resolution
 #                   that left an entry unclosed, on the NEXT entry.
-#   5. registry   — <REGISTRY_DUP_CHECK>; every shared-registry entry appears
+#   5. registry: <REGISTRY_DUP_CHECK>; every shared-registry entry appears
 #                   exactly once.
-#   6. shared     — <SHARED_ONLY_SUITES>; the suites lanes cannot run (guard
+#   6. shared: <SHARED_ONLY_SUITES>; the suites lanes cannot run (guard
 #                   tests on the shared resource's own partition), run here on the
 #                   shared resource before the barrier launches.
 #
@@ -62,7 +62,7 @@ done
 TRUNK="${TRUNK:-<TRUNK_BRANCH>}"
 INTEGRATION="${INTEGRATION:-<INTEGRATION_BRANCH>}"
 LANE_GLOB="<LANE_BRANCH_GLOB>"
-[ -n "$TRUNK" ] && [ -n "$INTEGRATION" ] && [ -n "$LANE_GLOB" ] || { echo "REFUSE: no trunk/integration/lane glob — write scripts/lane-cut.conf or pass --trunk and --integration" >&2; exit 2; }
+[ -n "$TRUNK" ] && [ -n "$INTEGRATION" ] && [ -n "$LANE_GLOB" ] || { echo "REFUSE: no trunk/integration/lane glob: write scripts/lane-cut.conf or pass --trunk and --integration" >&2; exit 2; }
 ARTEFACTS='(^|/)(trace\.zip|[^/]*\.har|\.env[^/]*)$'
 
 if [ "$DRY" -eq 1 ]; then

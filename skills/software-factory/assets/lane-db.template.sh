@@ -16,8 +16,8 @@
 # to the shared service over HTTP; (b) tests that build an expensive fixture.
 #
 # WHY `exec` OWNS A PROCESS GROUP AND `stop` EXISTS. A `pkill -f` against a lane
-# run once matched the parent, killed it, and left the test child at PPID 1 —
-# still connected — which then reconnected to a re-created lane database and
+# run once matched the parent, killed it, and left the test child at PPID 1:
+# still connected: which then reconnected to a re-created lane database and
 # ran beside the next run. So `exec` runs the command in its own process group,
 # records the group in a run file, refuses a second run while one is live, and
 # `stop` ends exactly that group (TERM, then KILL) and any tagged backend it
@@ -60,7 +60,7 @@ cmd_up() {
   echo "replaying $(ls "$ROOT"/<MIGRATIONS_GLOB> | wc -l | tr -d ' ') migrations..."; t0=$(date +%s)
   for m in $(ls "$ROOT"/<MIGRATIONS_GLOB> | sort); do
     apply_migration "$m" || die "replay stopped at $(basename "$m")"
-    # <BUILD_STEP_MID_CHAIN: any step the chain needs between two migrations —
+    # <BUILD_STEP_MID_CHAIN: any step the chain needs between two migrations:
     #  derive its position from the migrations' own text, never hardcode it>
   done
   echo "replayed in $(( $(date +%s) - t0 ))s"
@@ -168,5 +168,5 @@ esac
 
 # THE TEST RUNNER'S HALF: a `lane` mode that REFUSES unless LANE_DB is set and
 # the connection names this port, and that excludes the two barrier-only
-# classes by a predicate measured on this repository — a naive transitive
+# classes by a predicate measured on this repository: a naive transitive
 # import scan over shared helpers collapsed one selection from 308 files to 24.

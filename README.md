@@ -1,8 +1,8 @@
 # software-factory
 
-Three Claude Code skills for running an autonomous software build: requirements
-in, working product out, with verification you can trust and no one watching
-the terminal.
+Three Claude Code skills for running an autonomous software build: a
+requirements register in, a build proved row by row against it, with
+verification you can inspect and no one watching the terminal.
 
 The loop itself is the easy part. Whether an unattended build finishes depends
 on the factory around it (an oracle worth building against, a machine that
@@ -12,30 +12,35 @@ can't see.
 
 | Skill | When | What it does |
 | --- | --- | --- |
-| `software-factory` | Once, before the build | Quality-tests the requirements register and the definition of done, then primes eleven gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, and named seats. Then invokes `build-loop`. |
-| `build-loop` | Once, at the end of priming | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by an adversarial verify panel (up to three stages inside the wave), and then one serial barrier. Five gate counts ratchet: none may rise. |
+| `software-factory` | Once, before the build; again if a running build stalls on its environment | Quality-tests the requirements register and the definition of done, then primes eleven gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, and named seats. Then invokes `build-loop`. |
+| `build-loop` | Once, at the end of priming; again to fix the loop prompt's logic | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by an adversarial verify panel (up to three stages inside the wave), and then one serial barrier. Five gate counts ratchet: none may rise. |
 | `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated **progress checklist**: road to done, the current wave lane by lane, the next queue, what waits on you, and history. |
 
 The plugin also registers a **keep-alive Stop hook** for the build seat. It
 does nothing until you arm it (see below).
 
-## Where this came from
+## Where this came from, and what that does and doesn't show
 
 All three skills were extracted from one real build: a UK accountancy
-practice-management product, built by this loop over 113 waves between
-August and September 2026. Every rule cites what it cost when it was missing
-(`skills/*/references/evidence.md`). The cited artefacts live in the private
-source repository and are not published. A few figures:
+practice-management product, built by this loop over 113 waves between August
+and September 2026. Every rule cites what it cost when it was missing
+(`skills/*/references/evidence.md`).
 
-- In the early waves, two thirds of the calendar was stall on the machine,
-  permissions and questions queued for a person. The factory's gates exist to
-  remove that.
-- Most rows passed in the first ~30 waves could be proved with nothing rendered.
-  Gate 0, the oracle review, exists to catch that before building starts.
-- With the monitor seat and multi-stage lanes in place, 12 waves went green in
-  about 74 hours, 7 of them at the first barrier attempt. By wave 113, 132 of
-  152 requirement rows were PASS (the rest out of scope, or derived at the end);
-  the build had not yet run its done sequence.
+Read the figures with three limits in mind. They come from **one build**. The
+artefacts they cite live in a private repository and are not published, so the
+citations can't be checked from here. And that build **had not finished**: at
+wave 113, 132 of 152 requirement rows were PASS (the rest out of scope, or
+derived at the end), and the done sequence had not been run. What it does show:
+
+- In the early waves, about two thirds of the calendar was lost to stalls on
+  the machine, on permissions, and on questions queued for a person. The
+  factory's gates exist to remove those.
+- Most rows passed in the first ~30 waves could be proved with nothing
+  rendered. Gate 0, the oracle review, exists to catch that before building
+  starts.
+- Over waves 101 to 112, with the monitor seat and multi-stage lanes in place,
+  12 waves went green in about 74 hours, 7 of them at the first barrier
+  attempt. Several changes landed together, so no single one can claim that.
 
 ## Install
 
@@ -49,40 +54,61 @@ source repository and are not published. A few figures:
 1. In the project, run `/software-factory`. It works through the gates in
    order and tells you which ones need your hands. Two always do: pasting the
    permission allowlist, and granting the ruling delegation.
-2. It finishes by running `build-loop`, which writes the loop prompt. Start the
-   build seat with that prompt.
-3. In a second session, run `/build-monitor`. It finds the build seat, writes a
-   progress config beside the repo, and publishes the checklist page. It
-   updates the page after every wave.
+2. It finishes by running `build-loop`, which writes the loop prompt.
+3. Arm the keep-alive hook (below), then start the build seat with that prompt.
+4. In a second session, run `/build-monitor`. It finds the build seat, writes a
+   progress config beside the repo, and generates the checklist page after
+   every wave.
 
 ### The keep-alive hook
 
 A loop seat ends its turn after each wave and nothing re-invokes it. The hook
-blocks that stop, within bounds:
+blocks that stop, within bounds. Arming is your action, never the build seat's.
 
-- **Arm it** by writing `~/.claude/state/build-loop/armed.json`:
-  ```json
-  { "cwd_prefix": "/path/to/repo", "marker": "a phrase from your loop prompt", "max": 60, "exclude_sessions": [] }
-  ```
-- **Holds** only the session whose transcript contains `marker`, inside
-  `cwd_prefix`.
-- **Stops holding** when the seat writes `~/.claude/state/build-loop/stop`,
-  when `max` continuations are used, or when the arming is over 72 hours old.
-- **Disarm** it by deleting `armed.json`. To re-arm after a deliberate stop,
-  delete `stop` too: a stop file stays in force until removed.
-- **Pick the marker carefully**: a unique nonce that appears only in the prompt
-  you paste to start the build seat, not in the prompt file on disk (the
-  monitor seat reads that). Put the monitor's session id in
-  `exclude_sessions`. With no marker the hook holds nothing.
+```
+python3 hooks/arm.py nonce                          # prints a unique marker
+python3 hooks/arm.py arm /path/to/repo --marker <nonce> --exclude <monitor session id>
+python3 hooks/arm.py status                         # what is armed, and its counts
+python3 hooks/arm.py disarm /path/to/repo
+```
+
+(`hooks/` is inside the installed plugin; run the script from there, or copy it.)
+
+- **Holds** only a session whose transcript contains the marker, inside the
+  repo, and not in `--exclude`. Put the marker in the prompt you **paste** to
+  start the build seat, not in the prompt file on disk, which the monitor seat
+  reads.
+- **`--max`** (default 60) caps consecutive continuations **without progress**.
+  Progress is any new commit on any branch in the repo, or a change to a file
+  named with `--progress-path`. **`--max-total`** (default 500) caps
+  continuations per arming regardless.
+- **Stops holding** when the seat writes its stop file (`arm` prints the path,
+  and the hook tells the seat), when a cap is reached, or 72 hours after
+  arming.
+- **`--prompt-path`** tells the hook where the loop prompt lives if it isn't
+  `docs/prompts/build-loop.md`.
+- Each repo has its own state directory under `~/.claude/state/build-loop/`, so
+  builds on the same machine don't share counters or stop files. Re-arming
+  clears a previous stop file and resets the counts. An arming written by an
+  earlier version at `~/.claude/state/build-loop/armed.json` is still honoured.
 
 ## Requirements
 
-- Claude Code, with the Workflow tool or subagents for parallel lanes.
-- `git`, `bash` and `python3`. The progress page generator and the factory's
-  self-test use the standard library only.
+- `git`, `bash` and `python3`. Everything the plugin runs uses the standard
+  library only.
 - A requirements register (one row per requirement, with a pass criterion) and
   a single command that means "green". `software-factory` helps you get both
   into shape.
+- Claude Code, plus the capabilities below. Each has a fallback, and the skills
+  say which they are using.
+
+| Capability | Used for | If it isn't available |
+| --- | --- | --- |
+| The Workflow tool | Parallel lanes and verify panels in one wave | Serial iterations with subagents for verification. Slower, same contract. |
+| Ultracode | The intended single-session mode for the loop | `/loop` with one wave per firing, as the loop prompt describes |
+| `ListAgents` and `SendMessage` | The monitor seat finding and talking to the build seat | A file channel: `inbox/to-build.md` and `inbox/to-monitor.md` in the orchestrator directory |
+| The Artifact tool (claude.ai) | Publishing the progress page at a stable link | Open the generated HTML file locally, or serve it with `python3 -m http.server` |
+| macOS | The rig and sleep checks were exercised here | The rig template has Linux and Windows equivalents; check them once on your machine |
 
 The templates assume a database-backed web app (per-lane databases, a
 Playwright e2e suite). Gates that don't apply, such as lane databases for a
@@ -94,8 +120,24 @@ project with no shared service, are waived with the reason written down.
 python3 skills/software-factory/scripts/verify-factory.py
 ```
 
-This renders the factory's shell templates into temporary git repos, including
-one at a path with a space, and exercises them.
+This renders the factory's shell templates into temporary git repos (including
+one at a path with a space) and exercises them, tests the keep-alive hook and
+its arming helper against real git, and checks the house style: UK spelling and
+no em dashes in the prose.
+
+That shows the scripts behave. Whether Claude follows the skills is a separate
+question, and each skill has evals for it in `skills/<name>/evals/`:
+`evals.json` holds task prompts with assertions, and `trigger-evals.json` holds
+twenty queries per skill for testing that the right skill fires. The trigger
+sets are generated from one list, `evals/triggers.json`, so each skill is
+tested against the other two's near-misses:
+
+```
+python3 evals/split_triggers.py
+```
+
+Run both with the skill-creator skill's eval and description-optimisation
+workflows.
 
 ## Licence
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build progress checklist — generated, never hand-maintained.
+"""Build progress checklist: generated, never hand-maintained.
 
 Reads a build's own record (scoreboard, gate ceilings, git, wave evidence, the
 owner's list) and writes one self-contained HTML page: road to done, the
@@ -150,7 +150,15 @@ def lane_status(repo, cfg, n, lane, merges, evidence):
     approved = bool(subj and re.search(w.get("approval_regex", "reviewing seat"), subj, re.I))
     built = os.path.exists(os.path.join(lane_dir, w.get("build_marker", "build.md"))) or bool(review)
     return {"lane": lane, "cut": True, "built": built, "review": review, "approved": approved,
-            "merged": merged, "note": subj.split(" — ", 1)[1][:220] if " — " in subj else ""}
+            "merged": merged, "note": note_of(subj)}
+
+
+def note_of(subject):
+    """The free-text note in a merge subject: after " — " (older records) or the first ": "."""
+    for sep in (" — ", ": "):
+        if sep in subject:
+            return subject.split(sep, 1)[1][:220]
+    return ""
 
 
 def barrier_attempts(evidence, w):
@@ -252,7 +260,10 @@ def owner_list(path):
             m = re.match(r"^\s*- \[( |x|X)\]\s+(.*)", line)
             if m:
                 text = m.group(2).strip()
+                # `what: why` (current) or `what — why` (older lists).
                 parts = re.split(r"\s+—\s+", text, maxsplit=1)
+                if len(parts) == 1:
+                    parts = re.split(r":\s+", text, maxsplit=1)
                 items.append({"done": m.group(1).lower() == "x", "item": parts[0],
                               "detail": parts[1] if len(parts) > 1 else ""})
     except Exception:

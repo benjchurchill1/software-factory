@@ -6,7 +6,7 @@ expensive to retrofit. Each has a measured failure behind it; see
 
 ---
 
-## Gate 7 — every done condition is reachable, and gates are selectable as work
+## Gate 7: every done condition is reachable, and gates are selectable as work
 
 ### The failure
 
@@ -25,8 +25,8 @@ is decoration.
 ### The two repairs
 
 1. **Demote what the loop cannot select.** A count that measures something real
-   but that no lane owns stays a **ratchet** — measured every barrier, may only
-   fall, recorded in the wave log — and comes out of the definition of done.
+   but that no lane owns stays a **ratchet** (measured every barrier, may only
+   fall, recorded in the wave log) and comes out of the definition of done.
    That is not weakening the bar: the per-row precondition it was standing in
    for is still enforced on every row.
 2. **Make the rest selectable.** Every build wave carries at least one lane
@@ -40,7 +40,7 @@ is decoration.
 - Ratchets: green when the count is at or below the previous barrier's, adopted
   mechanically, with a refusal to raise built into the adopter.
 - Zero is a **done condition** for the ones a lane can own, never a commit
-  condition — gating on zero on day one means the instruments wave cannot commit
+  condition: gating on zero on day one means the instruments wave cannot commit
   its own work, and the only way out is dishonest exemptions.
 - A ceiling that genuinely must rise is raised **by a person editing the file**,
   with the reason in its note, so the file's history is the complete record of
@@ -48,7 +48,7 @@ is decoration.
 
 ---
 
-## Gate 8 — state the loop reads is generated, and the record is capped
+## Gate 8: state the loop reads is generated, and the record is capped
 
 ### The failure
 
@@ -69,8 +69,8 @@ date". Generated.
 1. **List the derived files.** Typically: the index of open questions, the
    scoreboard's summary counts, a surface or coverage map, any "what remains"
    table.
-2. **For each, name the source of truth** — the archive, the register, the
-   decision files, the code itself — and write the regeneration path.
+2. **For each, name the source of truth** (the archive, the register, the
+   decision files, the code itself) and write the regeneration path.
 3. **Regenerate at the barrier**, in the same step that writes the wave record,
    and commit the result with the wave.
 4. **Where regeneration is genuinely too expensive**, put a staleness stamp at
@@ -90,7 +90,7 @@ Measured: eight waves added 148,002 lines under `docs/` against 8,243 of
 product code, and the archive of open questions reached 700 KB before an index
 replaced it as the thing lanes read. Cap it in the loop prompt, as numbers:
 
-- a barrier artefact is at most **150 lines** — a phase table, each failure
+- a barrier artefact is at most **150 lines**: a phase table, each failure
   with one named cause, the gate counts, pointers to raw logs;
 - a wave-log entry is at most **40 lines**;
 - lanes read a **derived index** of open questions, never the archive;
@@ -101,7 +101,7 @@ a reader cost on every handover.
 
 ---
 
-## Gate 10 — every seat is named, and one owns the trunk
+## Gate 10: every seat is named, and one owns the trunk
 
 ### The failures
 
@@ -127,8 +127,8 @@ one branch produce.
 - **A seat that must change something the owner owns says so first** and waits
   for an acknowledgement.
 - **Evidence beats assertion.** When two seats disagree about whether something
-  happened, the answer is the external system's own record — the platform's
-  deployment list, the reflog, the log file — not either seat's memory. Quote it.
+  happened, the answer is the external system's own record (the platform's
+  deployment list, the reflog, the log file), not either seat's memory. Quote it.
 - **Never route a denied action through a peer.** If a seat's permission
   classifier refused a command, another seat running it launders the user's
   decision. It goes on the person's list instead.
@@ -138,11 +138,11 @@ one branch produce.
 Name all three in the conventions doc's §Seats, with what each owns, writes and
 never does:
 
-- **The owner** — rulings the policy cannot make, register changes,
+- **The owner**: rulings the policy cannot make, register changes,
   permission-gated commands, deploy consent.
-- **The build seat** — owns the trunk, the shared resource, lane provisioning,
+- **The build seat**: owns the trunk, the shared resource, lane provisioning,
   the barrier, the record and the push.
-- **The monitor seat** — a second session running `build-monitor` for the life
+- **The monitor seat**: a second session running `build-monitor` for the life
   of the build. It approves each lane before merge (screenshots at phone and
   desktop width for a lane that changes a screen), rules within the delegation,
   shapes the next wave's queue with the build seat, runs staging and its
@@ -151,8 +151,8 @@ never does:
   hands over by message, and the build seat commits with attribution.
 
 Two rules between seats, each learnt more than once: **never message a running
-workflow agent** — it resumes as a second writer in the same worktree; and
-**never let a generic tool pick a lane's base** — provision with the lane-cut
+workflow agent**, because it resumes as a second writer in the same worktree;
+and **never let a generic tool pick a lane's base**: provision with the lane-cut
 script.
 
 ### What it costs

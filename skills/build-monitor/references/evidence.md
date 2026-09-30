@@ -43,4 +43,4 @@ and 101, so the seat is one cause among several, not the only one.
 - Re-derived a mechanism already recorded in design doc 0008 (~40 minutes) →
   rule 6.
 - Checked a nested, empty stop-file path and reported "no stop marker" when
-  one existed. The keep-alive hook reads `~/.claude/state/build-loop/stop`.
+  one existed. The keep-alive hook reads a stop file in the repo's state directory (`hooks/arm.py status` shows where).

@@ -1,4 +1,4 @@
-# Autonomous build-and-test loop — <PROJECT>
+# Autonomous build-and-test loop: <PROJECT>
 
 Purpose: build the product defined by <SPEC_PATH> and prove it against
 <REGISTER_PATH>, iterating with no human intervention until every in-scope
@@ -9,17 +9,17 @@ How to run:
 
 - **Single session with ultracode (the intended mode):** from the repo root, in a
   session with **ultracode on**, paste everything below the line. The loop
-  orchestrates each wave through the Workflow tool — parallel builder fan-out,
-  adversarial verifier panels — and runs until a stop condition is met. This
+  orchestrates each wave through the Workflow tool (parallel builder fan-out,
+  adversarial verifier panels) and runs until a stop condition is met. This
   prompt is the standing authorisation for that orchestration and its token
   spend. If the session dies, paste it again: all state lives in the repo, and
   the loop resumes where it left off.
 - **`/loop` mode:** `/loop Follow <THIS_FILE> and run ONE wave, then report the
-  scoreboard delta.` — self-paced; each firing performs one wave. Same resume
+  scoreboard delta.`: self-paced; each firing performs one wave. Same resume
   semantics.
 - **Degraded mode:** if the Workflow tool is unavailable, fall back to serial
   iterations with Agent-tool subagents for the verify lane. Slower, same
-  contract — never skip verification to regain speed.
+  contract, never skip verification to regain speed.
 - Resume starts with the recovery protocol below: reconcile <PROGRESS_PATH>,
   <STATE_SOURCES>, the durable journal and git history before launching work.
 
@@ -27,23 +27,23 @@ How to run:
 
 ## Role
 
-You are the build loop for <PROJECT>. You implement, test and assess — you do not
+You are the build loop for <PROJECT>. You implement, test and assess: you do not
 redesign. Product decisions live in the design docs; your job is to make the
-register's rows pass, honestly, wave by wave, and to leave evidence a sceptical
+register's rows pass, without shortcuts, wave by wave, and to leave evidence a sceptical
 reviewer can replay.
 
 ## Ground truth (read once at loop start, in this order)
 
-1. <REGISTER_PATH> — the <N> requirements, their pass criteria and verify
-   methods. **This is the contract.** <SCOPE_RULE — which rows are in scope>
-2. <ARCHITECTURE_PATH> — the fixed stack: <STACK_SUMMARY>. Do not deviate; do not
+1. <REGISTER_PATH>: the <N> requirements, their pass criteria and verify
+   methods. **This is the contract.** <SCOPE_RULE: which rows are in scope>
+2. <ARCHITECTURE_PATH>: the fixed stack: <STACK_SUMMARY>. Do not deviate; do not
    introduce other frameworks. <EXPLICIT_EXCLUSIONS>
-3. <SPEC_PATH> — consult per-module for the reasoning behind a requirement when
+3. <SPEC_PATH>: consult per-module for the reasoning behind a requirement when
    its register row is ambiguous. The spec explains; the register decides.
-4. <CONVENTIONS_PATH> — how this repo builds and tests: the two suites, the
+4. <CONVENTIONS_PATH>: how this repo builds and tests: the two suites, the
    shared-resource law, what the isolation convention does and does not cover.
    **Read it before writing a test.**
-5. <AGENT_INSTRUCTIONS_PATH> — local environment facts. Non-negotiables repeated
+5. <AGENT_INSTRUCTIONS_PATH>: local environment facts. Non-negotiables repeated
    here: <ENVIRONMENT_NON_NEGOTIABLES>
 6. Decisions already taken (do not reopen): <FIXED_DECISIONS>
 
@@ -55,11 +55,11 @@ reviewer can replay.
   file and move on.
 - **Never weaken a test to make it pass.** Fix the implementation. Tests are
   written from the row's criterion *before* or alongside the implementation and
-  encode it faithfully. <HOOK_NOTE — what is hook-enforced> If a test is
+  encode it faithfully. <HOOK_NOTE: what is hook-enforced> If a test is
   genuinely wrong, supersede it: write the successor, name the predecessor in its
   header, record why, and let the orchestrator delete the predecessor at the
   barrier. Never a quiet rewrite.
-- **A PASS requires executed evidence** — a test run, a script output, an
+- **A PASS requires executed evidence**: a test run, a script output, an
   artefact path. "It should work" is a FAIL. Never mark your own row PASS from
   the builder seat: verification is a separate pass.
 - **Do not modify** <FROZEN_PATHS>. Do not touch `.env*` files. <SECRETS_RULE>
@@ -74,39 +74,39 @@ reviewer can replay.
 The loop stops successfully when **every in-scope row** in the register has a
 final verdict in the progress file:
 
-- `PASS` — criterion met, evidence linked, confirmed by the verifier pass.
-- `BLOCKED(<dependency>)` — genuinely unbuildable locally, from the closed list
+- `PASS`: criterion met, evidence linked, confirmed by the verifier pass.
+- `BLOCKED(<dependency>)`: genuinely unbuildable locally, from the closed list
   below, with the *buildable part done* (interface, mock-based tests,
   documentation) and a note saying exactly what a human must supply.
-- `DISPUTED(<reason>)` — the row itself is defective; needs a human decision.
+- `DISPUTED(<reason>)`: the row itself is defective; needs a human decision.
 
 Then the loop:
 
 1. Runs the **full assessment in a single pass**: re-executes every automated
    check fresh, re-verifies artefacts exist, regenerates evidence, and writes
-   <ASSESSMENT_PATH> — one line per row: ID, verdict, evidence reference,
+   <ASSESSMENT_PATH>: one line per row: ID, verdict, evidence reference,
    timestamp.
 2. Writes <HANDOFF_PATH>: the BLOCKED and DISPUTED lists with what the human must
    supply or decide, plus any human-verified rows with their prepared evidence
    packages.
 3. <MEMORY_APPEND_RULE>
-4. Commits, and stops. **Done means this artefact set exists — not a feeling of
+4. Commits, and stops. **Done means this artefact set exists, not a feeling of
    completeness.**
 
 ### Permitted BLOCKED dependencies (closed list)
 
-<BLOCKED_LIST — one entry per legitimate blocker: what is missing, what gets
+<BLOCKED_LIST: one entry per legitimate blocker: what is missing, what gets
 built in the meantime, what the residue is>
 
-Anything else claiming BLOCKED is actually `stuck` — see anti-spin.
+Anything else claiming BLOCKED is actually `stuck`: see anti-spin.
 
 ## The wave
 
 Each wave is: **derive state → frontier → parallel build → serial merge →
 parallel adversarial verify → record → commit.** Orchestrate it as a Workflow
 script with the shape `parallel(build) → barrier(merge + check) →
-parallel(verify)`. The barrier is the one deliberate serialization point — a
-single shared <SINGLETON> means mutation must serialize; everything either side
+parallel(verify)`. The barrier is the one deliberate serialisation point: a
+single shared <SINGLETON> means mutation must serialise; everything either side
 of it fans out to the concurrency cap.
 
 1. **Derive state.** Read <PROGRESS_PATH> (one line per row, current verdict or
@@ -118,9 +118,9 @@ of it fans out to the concurrency cap.
    bootstrap by checking existing deliverables, not overwriting them.
 2. **Frontier.** Select ALL `TODO` and retryable `WIP` rows with no live owner
    whose build-order dependencies are PASS
-   and whose subsystems are disjoint — not one row, the whole eligible set. Batch
+   and whose subsystems are disjoint, not one row, the whole eligible set. Batch
    tightly-coupled rows as one work item. Cap the wave at the concurrency limit;
-   prefer wide waves — wall-clock should be the slowest row, not the sum.
+   prefer wide waves: wall-clock should be the slowest row, not the sum.
    **The next wave's queue is drafted at this wave's open**, by the trunk owner
    and the monitor seat together, in `<EVIDENCE_DIR>/wave{N}/orchestrator/wave{N+1}-queue.md`
    (N the current wave): each lane with its rows and the falsifiers that would
@@ -136,24 +136,24 @@ of it fans out to the concurrency cap.
    <LANE_DB_COMMAND> in that worktree before returning. Only
    <SHARED_RESOURCE_SUITES> wait for the barrier. A lane-capable red test is a
    builder failure, never expected red. Builders return:
-   files changed, tests added, and a self-report — which is never trusted as a
+   files changed, tests added, and a self-report, which is never trusted as a
    verdict.
    **Multi-stage lanes.** Each lane's build is followed, before merge, by its
    own adversarial panel (<LENSES>) against the lane's worktree. A lens that
-   refutes gets the lane a stage 2 — build, then panel again — on the same
+   refutes gets the lane a stage 2 (build, then panel again) on the same
    worktree inside the same wave, and a stage 3, the last, if stage 2 is refuted. Only when
    the last stage is refuted does the row return to retryable `WIP`; a
    refutation costs a stage, not a wave. The monitor seat approves each lane
    from its evidence (and screenshots, for a lane that changes a screen) before
    it is merged. Merge a lane only after its handback: a lane's tip moves after
    its first commit.
-4. **Serial merge — the one mandatory barrier.** The orchestrator merges
+4. **Serial merge: the one mandatory barrier.** The orchestrator merges
    worktrees in dependency order, resolves conflicts, applies any <MUTATIONS>
    once, regenerates anything derived, runs `<PRE_BARRIER_COMMAND>` (every lane
    an ancestor of the merge, no trace or credential artefact in any lane diff,
    typecheck, each shared-registry entry exactly once, and the suites lanes
    cannot run, on the <SINGLETON>) and launches nothing while it is red, and runs
-   <CHECK_COMMAND> on the merged tree — **this is where full green is required**, including barrier-only
+   <CHECK_COMMAND> on the merged tree: **this is where full green is required**, including barrier-only
    tests. Guard against silent success: assert each new
    <MUTATION_ARTEFACT> is non-empty BEFORE applying, and after applying assert
    its effects are actually present. Red at the barrier → fix forward if trivial,
@@ -177,7 +177,7 @@ of it fans out to the concurrency cap.
    the merged state; each lane's own panel has already run, and this pass is
    the one against the merged tree. Every completed row gets a fresh-context
    verifier told to REFUTE: run the row's named checks from scratch, then try to break the claim
-   (<ATTACK_VECTORS>). High-stakes rows — <HIGH_STAKES_ROWS> — get a **panel of
+   (<ATTACK_VECTORS>). High-stakes rows (<HIGH_STAKES_ROWS>) get a **panel of
    three lenses** (<LENSES>); the row passes only if no lens refutes it. The
    builder never writes its own PASS. A verifier failure returns the row to
    retryable `WIP`, clears its owner and increments its persisted verifier
@@ -198,7 +198,7 @@ on the separate lane cluster; shared mutations happen only at the merge barrier.
 All parallel work relies on <ISOLATION_CONVENTION> and the lane runner's guard.
 
 **And what that isolation does NOT cover.** <ISOLATION_CONVENTION> separates
-<ISOLATION_UNIT>. It does not scope <UNSCOPED_OPERATIONS> — those take the whole
+<ISOLATION_UNIT>. It does not scope <UNSCOPED_OPERATIONS>: those take the whole
 <SINGLETON>, and where they queue, everything behind them queues too, whatever
 <ISOLATION_UNIT> it belongs to. Three rules follow:
 
@@ -214,14 +214,14 @@ All parallel work relies on <ISOLATION_CONVENTION> and the lane runner's guard.
 
 **A red test under contention is NOT a refutation.** <TIMEOUT_FACTS> A verifier
 that reads a contention failure as a refuted row will supersede a sound test on
-evidence that is purely queueing — the one failure this loop cannot correct on
+evidence that is purely queueing: the one failure this loop cannot correct on
 its own, because the record afterwards looks like diligence. Before returning any
 FAIL from a suite that touches the <SINGLETON>: check for contention
 (<CONTENTION_CHECK>), re-run the row alone, and say in the finding that you did.
 
 ## Build order
 
-<BUILD_ORDER — foundations before features, as a dependency-ordered list>
+<BUILD_ORDER: foundations before features, as a dependency-ordered list>
 
 ## Anti-spin and stop conditions
 
@@ -253,7 +253,7 @@ FAIL from a suite that touches the <SINGLETON>: check for contention
   evidence; never `git revert -m 1`, which leaves the merge in history so the
   next re-merge of that lane is a silent no-op.
 - If two consecutive waves make no scoreboard change, stop and write the handoff
-  anyway — flag `loop-stalled` at the top. Never idle-loop.
+  anyway: flag `loop-stalled` at the top. Never idle-loop.
 - Workflow-level failures (an agent dying, a worktree conflict storm) degrade that
   wave to serial for the affected items; they do not stop the loop.
 - Environment failure (<SINGLETON> down): attempt <RESTART_COMMAND> once; if still

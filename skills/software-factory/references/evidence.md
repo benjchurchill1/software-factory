@@ -24,7 +24,7 @@ stall**, and almost none of it was the model or the prompt.
 | Waiting on a person for maintenance, permissions and rulings | most of the rest |
 | Authoring lanes, already parallel | small |
 
-## Gate 0 — the oracle
+## Gate 0: the oracle
 
 The first thirty waves produced 89 rows passing, 7,583 tests and zero
 conformance violations, over an application whose navigation offered nine
@@ -40,7 +40,7 @@ sat PASS for six waves; it could not fail. (`verification/wave55-verify.txt`,
 PM-CMP-01.) Two legs of another row were satisfied from the second run onward
 by the previous run's rows. (Escalation E-163.)
 
-## Gate 1 — the rig
+## Gate 1: the rig
 
 The box was dedicated but not headless, and the barrier's own record names the
 costs in this order:
@@ -71,7 +71,7 @@ costs in this order:
   `caffeinate -dimsu -t 21600` before lanes and barriers ended it.
   (Build seat's note, 2026-09-25, not a loop record; retrospective §4.)
 
-## Gate 2 — standing authority
+## Gate 2: standing authority
 
 The permission classifier denied the loop, at every autonomous seat measured,
 its own maintenance script, its schema migrations, the container restart, and
@@ -95,7 +95,7 @@ the write of the permission file itself. (`decisions/2026-09-03-the-loop-goes-fa
   auto-deployed. That made every push a guarded act and caused E-14 four
   times. (Retrospective §5; build seat's note, 2026-09-17.)
 
-## Gate 3 — the ruling policy
+## Gate 3: the ruling policy
 
 Forty-six open questions had accumulated before anyone noticed, because each
 individually needed a person. Once a written policy existed, all forty-six were
@@ -107,7 +107,7 @@ Two rulings were later measured wrong by the lanes implementing them, and both
 times the lane was believed and the ruling amended.
 (`decisions/2026-09-06-standing-wip-is-wip-component.md`; E-156's §3 reading.)
 
-## Gate 4 — the test-data lifecycle
+## Gate 4: the test-data lifecycle
 
 Tenant-per-test with no cleanup. (Escalation E-141 and its addendum.)
 
@@ -139,7 +139,7 @@ cycle spans every demo client. The repair that held was the spec's own: close
 what it made, through the product path, found by a positive marker it wrote,
 with a decoy as control and the barrier precondition as backstop.
 
-## Gate 5 — lane provisioning
+## Gate 5: lane provisioning
 
 Two conventions were written down, read, and both recurred: 119 of 188
 worktrees were cut at a commit from a different project, affecting twelve of
@@ -166,7 +166,7 @@ a Playwright `trace.zip` holding an expired local test token reached origin at w
 (Build seat's note `merge-traps-parallel-lanes`; retrospective §4, §5.)
 `assets/pre-barrier.template.sh` is those notes as one command.
 
-## Gate 6 — lane databases
+## Gate 6: lane databases
 
 Before them, the first barrier attempt was red and the second green at four
 consecutive waves (46, 47, 48, 50), structurally, each costing a full extra
@@ -180,14 +180,14 @@ running against a database its lane had dropped and re-cloned; `exec` now runs
 each command in its own process group and `stop` ends exactly that tree.
 (E-136 addendum 4; `build-conventions.md` §Lane databases.)
 
-## Gate 7 — reachable done conditions
+## Gate 7: reachable done conditions
 
 One done condition required a count to reach zero. It fell by one in twelve
 waves, because the wave loop only ever selected requirement rows and nothing
 ever selected a gate violation. (`decisions/2026-09-03-the-loop-goes-faster.md`
 §1–2.) After the repair, both remaining gates moved every wave.
 
-## Gate 8 — generated state, and the record's size
+## Gate 8: generated state, and the record's size
 
 The hand-maintained index of open questions listed fourteen items as needing a
 person that had all been decided four days earlier; three lanes sat blocked on
@@ -197,22 +197,22 @@ Waves 45 to 52 added 148,002 lines under `docs/` against 8,243 of product
 code; the ruling capped barrier artefacts at 150 lines and log entries at 40.
 (`decisions/2026-09-03-the-loop-goes-faster.md` §0, §5.)
 
-## Gate 9 — the guarded deploy
+## Gate 9: the guarded deploy
 
 The deploy script lived in a temporary directory; a reboot removed it and the
 next "deploy" reported success having done nothing. Two targets existed, one a
 live application on a different lineage; the linked-service marker was the only
 thing between them. (Reviewing seat, 2026-09-05.)
 
-## Gate 10 — every seat is named, and one owns the trunk
+## Gate 10: every seat is named, and one owns the trunk
 
 Two agents on one branch produced a duplicate commit of one lane's work, an
 unattributed 5,000-line merge (escalation E-125 addendum), and a factual
 disagreement about whether a deploy had happened that the platform's own
 deployment list had to settle.
 
-The build's best stretch ran three seats, and the second agent seat — the
-reviewing seat, now `build-monitor` — was defined nowhere in the loop prompt or
+The build's best stretch ran three seats, and the second agent seat (the
+reviewing seat, now `build-monitor`) was defined nowhere in the loop prompt or
 the conventions doc; it existed only in commit messages, decisions and memory.
 (Retrospective §2, grepped 2026-09-26.) Over waves 101 to 112, twelve waves
 went green in about 74 hours, seven at the first attempt; over waves 84 to 99,

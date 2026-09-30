@@ -1,0 +1,82 @@
+[
+  {
+    "query": "we're about to point claude at our PRD and let it build the whole invoicing module unattended over the bank holiday weekend. what do I need to set up first so it doesn't stall?",
+    "should_trigger": false
+  },
+  {
+    "query": "Can you review our acceptance criteria in docs/requirements/register.md before we let an agent build against them? I'm worried some aren't testable.",
+    "should_trigger": false
+  },
+  {
+    "query": "set me up a software factory for the new repo, I want the wave-based build agent approach we used last time",
+    "should_trigger": false
+  },
+  {
+    "query": "my autonomous build keeps stopping every few hours asking me to approve docker commands, and the mac seems to go to sleep overnight. how do I stop that",
+    "should_trigger": false
+  },
+  {
+    "query": "The loop's barrier is red again with timeouts in the e2e suite. Nobody touched those files. Swap is at 18GB. What's the fix?",
+    "should_trigger": false
+  },
+  {
+    "query": "Our unattended build has 40 questions queued for me in escalations/. I can't be answering these all day. Can the loop rule on some itself?",
+    "should_trigger": false
+  },
+  {
+    "query": "write the loop prompt for the booking app now that the factory's primed. register is at docs/requirements/register.md and green is pnpm check",
+    "should_trigger": true
+  },
+  {
+    "query": "our existing build loop prompt lets builders mark their own rows PASS and it keeps retiring tests when the machine is slow. can you fix the prompt?",
+    "should_trigger": true
+  },
+  {
+    "query": "I want a 'run until every requirement passes' prompt for Claude Code with parallel builders and adversarial verifiers",
+    "should_trigger": true
+  },
+  {
+    "query": "adapt the loop prompt from the practice-management build to this new repo, it has no stop condition for two waves with no change",
+    "should_trigger": true
+  },
+  {
+    "query": "start the monitor seat for the build that's running in the other terminal",
+    "should_trigger": false
+  },
+  {
+    "query": "where's the build at? what's left and what's waiting on me?",
+    "should_trigger": false
+  },
+  {
+    "query": "lane w23/reports just handed back, can you review it before the build seat merges? screenshots please",
+    "should_trigger": false
+  },
+  {
+    "query": "can I get a live progress page for the wave build so the team can see where it is",
+    "should_trigger": false
+  },
+  {
+    "query": "write a GitHub Actions workflow that runs our Playwright tests on every PR",
+    "should_trigger": false
+  },
+  {
+    "query": "set up a /loop that checks my deploy status every 5 minutes and pings me when it's done",
+    "should_trigger": false
+  },
+  {
+    "query": "what's the difference between a git worktree and a branch? I keep hearing about worktrees for parallel agents",
+    "should_trigger": false
+  },
+  {
+    "query": "review this PR for the invoices module, the one a colleague opened this morning",
+    "should_trigger": false
+  },
+  {
+    "query": "our factory in Cork needs a production line monitoring dashboard with OEE metrics",
+    "should_trigger": false
+  },
+  {
+    "query": "write a PRD for a patient recall feature, we haven't started building yet",
+    "should_trigger": false
+  }
+]

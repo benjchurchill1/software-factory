@@ -1,4 +1,4 @@
-# Build conventions — <PROJECT>
+# Build conventions: <PROJECT>
 
 What builders and verifiers must know before writing a line. The loop prompt
 points here at wave start; this file is where the rules that would otherwise be
@@ -8,8 +8,8 @@ re-learned the hard way are written down.
 
 | Command | What it does | Who runs it |
 | --- | --- | --- |
-| `<BUILDER_GREEN_COMMAND>` | <WHAT_IT_COVERS — no shared resource> | builders, in their worktree — must be green before returning |
-| `<CHECK_COMMAND>` | everything above **plus** <SHARED_RESOURCE_SUITES> **plus** <RUNTIME_CHECK> | the orchestrator at the merge barrier — must be green before any commit |
+| `<BUILDER_GREEN_COMMAND>` | <WHAT_IT_COVERS: no shared resource> | builders, in their worktree: must be green before returning |
+| `<CHECK_COMMAND>` | everything above **plus** <SHARED_RESOURCE_SUITES> **plus** <RUNTIME_CHECK> | the orchestrator at the merge barrier: must be green before any commit |
 | `<STATUS_COMMAND>` | read-only: live runs, contention, orphans, scoreboard | anyone, at any point in a wave |
 | `<LANE_CUT_COMMAND>` | provision worktree, base proof and range ledger | orchestrator before dispatch |
 | `<LANE_DB_COMMAND>` | clone/exec/stop/drop isolated lane database | lane integration checks before returning |
@@ -24,9 +24,9 @@ commit messages and memory; this section is where it is written down.
 
 | | Owns | Writes | Never |
 | --- | --- | --- | --- |
-| **Owner** — <OWNER> | rulings the policy cannot make; register changes; permission-gated commands; deploy consent | the register, by hand; the rulings they make | — |
-| **Build seat** — <TRUNK_OWNER> | <BRANCH>, the shared <SINGLETON>, lane provisioning, the barrier, the record, the push | code, via lanes; wave records; rulings under the written policy | merges a lane before its handback; spends barrier attempt 3 on a repair; pushes <DEPLOY_BRANCH> |
-| **Monitor seat** — a second session running `build-monitor` | approval of each lane before merge; rulings within the delegation; the next wave's queue, with the build seat; staging and its falsifiers | drafts in its own scratchpad, handed over by message; the build seat commits them with attribution | writes into the shared checkout while a barrier runs |
+| **Owner**: <OWNER> | rulings the policy cannot make; register changes; permission-gated commands; deploy consent | the register, by hand; the rulings they make | (none) |
+| **Build seat**: <TRUNK_OWNER> | <BRANCH>, the shared <SINGLETON>, lane provisioning, the barrier, the record, the push | code, via lanes; wave records; rulings under the written policy | merges a lane before its handback; spends barrier attempt 3 on a repair; pushes <DEPLOY_BRANCH> |
+| **Monitor seat**: a second session running `build-monitor` | approval of each lane before merge; rulings within the delegation; the next wave's queue, with the build seat; staging and its falsifiers | drafts in its own scratchpad, handed over by message (`SendMessage`, or the file channel in the orchestrator directory's `inbox/` where that tool is absent); the build seat commits them with attribution | writes into the shared checkout while a barrier runs |
 
 Rules between seats:
 
@@ -39,17 +39,17 @@ Rules between seats:
   then run the workflow with isolation omitted and each agent handed its
   worktree path.
 - A seat that disagrees with another about whether something happened settles
-  it from the external record — the reflog, the platform's deployment list, the
-  log file — not from either seat's memory.
+  it from the external record (the reflog, the platform's deployment list, the
+  log file), not from either seat's memory.
 
 ## Test placement
 
-- **<UNIT_SUITE_PATTERN>** — pure logic, no <SINGLETON>. Runs anywhere, including
+- **<UNIT_SUITE_PATTERN>**: pure logic, no <SINGLETON>. Runs anywhere, including
   a worktree with no access to it.
-- **<SHARED_SUITE_PATTERN>** — lane-capable integration tests must pass through
+- **<SHARED_SUITE_PATTERN>**: lane-capable integration tests must pass through
   `<LANE_DB_COMMAND>` in the provisioned worktree before return. The runner
   refuses a missing LANE_DB or a connection to the shared service.
-- **<SHARED_RESOURCE_SUITES>** — only these named HTTP/shared-service or
+- **<SHARED_RESOURCE_SUITES>**: only these named HTTP/shared-service or
   expensive-fixture suites first execute at the barrier. Never weaken a test
   to make a worktree green. Record an explicit waiver if no stateful service exists.
 
@@ -65,7 +65,7 @@ lanes across waves; stop/drop the previous database before reusing a name.
 
 Types, lint and unit tests **start nothing**. A module exporting the wrong shape,
 a call site passing credentials the runtime cannot read, a route that returns 200
-with an empty body — none are reachable by a test over a pure function, because
+with an empty body: none are reachable by a test over a pure function, because
 the defect is in the composition rather than in any function. A check that starts
 the product and exercises it is the only thing that sees them, and it has **no
 skip-when-unavailable branch**: a check that quietly skips is how a blind spot is
@@ -85,8 +85,8 @@ Builders **never** <FORBIDDEN_MUTATIONS>.
 **<UNSCOPED_RESOURCE>**, and conflating the two is the expensive mistake.
 
 <UNSCOPED_OPERATIONS> take the whole <SINGLETON>. No <ISOLATION_UNIT> key
-narrows them, and where such an operation queues — itself waiting behind
-something unrelated — everything after it queues too.
+narrows them, and where such an operation queues (itself waiting behind
+something unrelated), everything after it queues too.
 
 The operations that do this, and there are few:
 
@@ -110,14 +110,14 @@ Rules that follow:
 
 ## <SETUP_COST_SECTION_TITLE>
 
-<SETUP_COST_RATIONALE — the expensive fixture or environment build, how long it
+<SETUP_COST_RATIONALE: the expensive fixture or environment build, how long it
 takes, what it holds while it runs, and whether it is rebuilt every run. If a
 cleanup step deletes what the next run rebuilds, say so plainly: those two are
 paying for each other, and reuse-if-present is the fix.>
 
 ## Contention is not refutation
 
-<TIMEOUT_FACTS — the default timeout, and the observed contention it must sit
+<TIMEOUT_FACTS: the default timeout, and the observed contention it must sit
 above.>
 
 A verifier that reads a contention failure as a refuted row will supersede a
@@ -129,14 +129,14 @@ that you did.
 
 ## Superseding a test, and who deletes the old one
 
-A committed test may not be edited. When one is genuinely wrong — it encodes the
-defect, or asserts as correct something a later wave refuted — write the
+A committed test may not be edited. When one is genuinely wrong (it encodes the
+defect, or asserts as correct something a later wave refuted), write the
 successor, name the predecessor in its header with an assertion map, and record
 the predecessor for deletion by the orchestrator at the barrier.
 
 Both files must not simply be left to run: two files asserting contradictory
 things about the same behaviour keep the barrier permanently red and hide the
-next real regression behind known noise. <SUPERSEDE_MECHANISM — where the list
+next real regression behind known noise. <SUPERSEDE_MECHANISM: where the list
 of superseded files lives, and how the runner refuses when an entry is stale.>
 
 This is **not** a way to silence a failing test. Each entry names both files, and

@@ -1,6 +1,6 @@
 ---
 name: build-monitor
-description: Run the monitor seat for an autonomous wave-based build — a second Claude session beside the build seat that reviews every lane before merge (screenshots at phone and desktop width for UI lanes), makes product rulings within the owner's delegation, shapes the next wave's queue, deploys to staging and runs falsifiers there, keeps the owner's list short, watches liveness, and publishes a generated progress checklist page after each wave. Use when someone wants a build monitor, a reviewing seat, a second pair of eyes on an unattended build, a progress checklist or dashboard for a build loop, or asks "where is the build", "what's left", or "what's waiting on me" during a software-factory / build-loop build.
+description: Run the monitor seat for an autonomous wave-based build that is already running: a second Claude session beside the build seat that reviews every lane before merge (screenshots at phone and desktop width for UI lanes), rules within the owner's delegation, shapes the next wave's queue, runs staging checks, keeps the owner's to-do list short, watches liveness, and publishes a generated progress checklist after each wave. Use when someone wants a build monitor, a reviewing seat or second pair of eyes on an unattended build, a progress page for a build loop, or asks "where is the build", "what's left" or "what's waiting on me" during a software-factory or build-loop build. Not for setting a build up (software-factory) or writing its prompt (build-loop).
 ---
 
 # Build monitor
@@ -45,8 +45,15 @@ These outrank everything else here.
 
 ## Setup (once per build)
 
-1. Find the build seat. `ListAgents` shows sessions; agree the channel
-   (`SendMessage`) and the orchestrator directory where briefs and queues live.
+1. Find the build seat and agree a channel. Where the session has
+   `ListAgents` and `SendMessage`, use them: `ListAgents` shows sessions and
+   `SendMessage` is the channel. Where it does not, use the **file channel**:
+   two append-only files in the orchestrator directory,
+   `inbox/to-build.md` and `inbox/to-monitor.md`, one dated entry per message
+   (`## <ISO time> <subject>` then the body). Each seat reads its inbox at the
+   start of every pass and at every lane handback, and never edits an entry
+   once written. Agree the orchestrator directory where briefs and queues live
+   either way.
 2. Write the progress config beside the repo, not in it (the build seat owns
    the checkout): copy `assets/monitor.example.json` to
    `<project folder>/build-monitor/monitor.json` and fill it from the repo.
@@ -54,8 +61,9 @@ These outrank everything else here.
    `references/progress-checklist.md`.
 3. Seed `owner-list.md` from `assets/owner-list.template.md` with whatever is
    already waiting on the owner.
-4. Generate and publish the page (below). Record its URL in `monitor.json`
-   as `artifact_url` so any later session updates the same page.
+4. Generate and publish the page (below). If it went out through the
+   Artifact tool, record its URL in `monitor.json` as `artifact_url` so any later
+   session updates the same page.
 5. Save a memory note naming the build seat, the config path and the page URL.
 
 ## The cycle
@@ -69,9 +77,9 @@ due, not a minute-by-minute poll.
 
 - Run the project's status readout (`scripts/loop-status.sh`, or wherever build-loop wrote it). Read
   lane processes, barrier state, memory and swap, dirty files.
-- If agents died with "[Request interrupted]", check host sleep first
-  (`pmset -g log | grep -E 'Sleep|Wake'`), then tell the build seat to run
-  `caffeinate`.
+- If agents died with "[Request interrupted]", check host sleep first with
+  the rig doc's "did it sleep?" command for this OS, then tell the build seat
+  to renew the hold.
 - If a barrier reds on a timeout in code no lane touched, suspect the host or
   the test estate before the tree. Ask for the one cell alone.
 
@@ -121,10 +129,17 @@ environment and never go in a file.
 
     python3 <this skill's base directory>/scripts/progress.py --config <project folder>/build-monitor/monitor.json
 
-Then republish the page: Artifact `publish` with `file_path` set to the
-generated HTML and `url` set to `artifact_url`. The page's `url` stays the
-same. Do this after every wave record, and after any change to the owner's
-list. The script is read-only against the repo and safe during a barrier.
+Then republish the page, after every wave record and after any change to the
+owner's list. The script is read-only against the repo and safe during a
+barrier.
+
+- **Where the session has the Artifact tool** (claude.ai sessions do; Claude
+  Code sessions usually do not): `publish` with `file_path` set to the
+  generated HTML and `url` set to `artifact_url`, so the link stays the same.
+- **Otherwise**, the generated file is the page. It is self-contained, so open
+  it locally (`open` on macOS, `xdg-open` on Linux) or serve its folder with
+  `python3 -m http.server --bind 127.0.0.1` for a browser on the same machine.
+  Leave `artifact_url` empty and tell the owner the file path once.
 
 The page shows:
 - **Road to done**: each done condition with its live count.
@@ -138,7 +153,7 @@ Everything except the owner's list is derived. Never hand-edit the page.
 
 ### Keep the owner's list short
 
-`owner-list.md`: one line per item, `- [ ] what — why or where`. Only things
+`owner-list.md`: one line per item, `- [ ] what: why or where`. Only things
 no seat may do: register writes, refused commands, legal and commercial calls,
 deploy consent, history rewrites. Remove ticked items after one wave. When
 reporting to the owner, lead with this list.

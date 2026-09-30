@@ -20,7 +20,7 @@ a ruling and a wave.
 Apply each to every row. A row that fails one is repaired **now**, by the
 person who owns the product, not ruled on later by an agent.
 
-### 1. Falsifiability — what makes this row RED?
+### 1. Falsifiability: what makes this row RED?
 
 Name the assertion that fails. If you cannot, the row will pass vacuously.
 
@@ -38,7 +38,7 @@ Name the assertion that fails. If you cannot, the row will pass vacuously.
 which it is red. If that sentence is "the code was deleted", the row is
 vacuous.
 
-### 2. Reachability — is the capability reachable by a person?
+### 2. Reachability: is the capability reachable by a person?
 
 A row provable against the database alone will be proved against the database
 alone.
@@ -54,10 +54,10 @@ alone.
 
 **The test:** for each row, name the route, the control and the verb a person
 uses. If the answer is "none, it is a database property", the row must say so
-explicitly and carry a reason — and the count of such rows is a number you
+explicitly and carry a reason, and the count of such rows is a number you
 should be uncomfortable with.
 
-### 3. Non-contradiction — do any two rows conflict?
+### 3. Non-contradiction: do any two rows conflict?
 
 > **Measured.** One row required cold login to land on the client register,
 > unqualified. Another required a configurable per-role dashboard. One predicate
@@ -69,13 +69,13 @@ should be uncomfortable with.
 whether all of them can be true at once. Pay attention to defaults, landing
 states, and anything phrased as "always" or "never".
 
-### 4. Achievable evidence — can this be proved where the build runs?
+### 4. Achievable evidence: can this be proved where the build runs?
 
 > **Measured.** Ten rows were tagged for the first release and asked for
 > evidence no amount of building can create: a partner demonstrating live, a
 > reconciliation against a practice's own manual list, an import from a real
 > legacy backup, an audit over a thirty-day period. Holding the release behind
-> them made it unreachable by construction — a category error, not a schedule
+> them made it unreachable by construction: a category error, not a schedule
 > problem. The repair was a release tag meaning "provable only by running the
 > built system at a real site".
 
@@ -84,7 +84,7 @@ this machine can produce it. Rows that need a real customer, real elapsed time
 or real third-party credentials get their own release tag and leave the
 loop's scope, with their evidence package prepared for the day they can run.
 
-### 5. Non-empty population — does the criterion quantify over something?
+### 5. Non-empty population: does the criterion quantify over something?
 
 > **Measured.** A criterion quantified over a population the demo data never
 > contained, so both its positive clauses were vacuously true. Another named
@@ -93,9 +93,9 @@ loop's scope, with their evidence package prepared for the day they can run.
 
 **The test:** for each row containing "every", "all", "any" or "no", name the
 rows in the fixture that make the quantifier meaningful, and say who creates
-them — the seed, or the spec through the shipped interface.
+them: the seed, or the spec through the shipped interface.
 
-### 6. Mechanical pass condition — who decides, and how?
+### 6. Mechanical pass condition: who decides, and how?
 
 Each row needs a verify method, and the honest set is small: scriptable check,
 deterministic against named fixtures, observable from a recorded walkthrough,
@@ -110,12 +110,12 @@ design, on a schedule.
 > that made an unattended run possible at all. That was luck, discovered
 > afterwards, not design.
 
-### 7. Coverage — what does a user do that no row mentions?
+### 7. Coverage: what does a user do that no row mentions?
 
 The six tests above check the rows you have. This one checks for the rows you
 do not.
 
-**The test:** walk the product's main jobs end to end on paper — the daily
+**The test:** walk the product's main jobs end to end on paper: the daily
 task, the weekly task, the onboarding of a new customer, the thing that happens
 when something goes wrong. At each step, name the row. A step with no row is a
 gap, and the loop will never find it, because the register is its whole world.
@@ -154,6 +154,6 @@ rows retagged out of scope, the contradictions resolved, the gaps found in test
 as the contract and the loop may not touch it.
 
 **Where a row is wrong and the owner is unavailable**, the loop's ladder can
-rule on interpretation — but only within a row, never to add or delete one.
+rule on interpretation, but only within a row, never to add or delete one.
 The gaps from test 7 in particular can only be closed by the person who knows
 what the product is for.
