@@ -1,0 +1,53 @@
+{
+  "skill_name": "build-loop",
+  "evals": [
+    {
+      "id": 1,
+      "name": "tests-are-not-an-oracle",
+      "prompt": "Write me a build loop prompt. The oracle is just our test suite, the loop can add tests as it goes. Green is whatever passes.",
+      "expected_output": "Pushes back: an oracle the loop can edit is not an oracle. Asks for a register the loop may never change, and a single command that means green. Does not emit a prompt until both are settled, or makes creating them wave zero's first job.",
+      "files": [],
+      "assertions": [
+        {"name": "challenges-oracle", "text": "States that tests written by the loop cannot be the oracle"},
+        {"name": "asks-for-register", "text": "Asks for something the loop may never edit"},
+        {"name": "challenges-green", "text": "Asks for a single green command, or makes it wave zero's first job"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "adapt-without-regenerating",
+      "prompt": "Here's our existing loop prompt (docs/prompts/loop.md). Builders currently write PASS into the scoreboard when their tests pass. Can you fix it?",
+      "expected_output": "Reads the existing prompt and proposes a diff rather than regenerating. Moves verdicts to a separate verify pass so builders never record their own PASS. Checks the other common gaps in order and reports which are present.",
+      "files": [],
+      "assertions": [
+        {"name": "diff-not-rewrite", "text": "Proposes changes as a diff to the existing prompt"},
+        {"name": "separate-verifier", "text": "Builders may no longer mark their own rows PASS"},
+        {"name": "checks-other-gaps", "text": "Reviews shared-resource law, contention-is-not-refutation, blocked list and stop conditions"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "open-blocked-list",
+      "prompt": "Some rows can't be done locally, the loop can figure out which ones as it goes. Go ahead and write the loop.",
+      "expected_output": "Refuses an open-ended blocked list. Asks for a closed, enumerated list of dependencies that justify BLOCKED, and says why: an open list is how a loop stops working while looking busy.",
+      "files": [],
+      "assertions": [
+        {"name": "requires-closed-list", "text": "Requires the blocked list to be closed and enumerated"},
+        {"name": "explains-risk", "text": "Explains that an open list lets the loop stop working while appearing busy"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "no-unreplaced-slots",
+      "prompt": "Generate the loop for this repo. Register at docs/requirements/register.md, green is `pnpm check`, branch build/v1 from main, no deploy.",
+      "expected_output": "Emits all four artefacts, seeds the scoreboard and a checkpoint with bootstrap_complete false, greps for unreplaced slots and reports none, runs loop-status.sh and the check command, and reports what was and was not verified.",
+      "files": [],
+      "assertions": [
+        {"name": "four-artefacts", "text": "Writes the loop prompt, conventions doc, status readout and scoreboard"},
+        {"name": "checkpoint-seeded", "text": "Seeds a checkpoint with bootstrap_complete: false"},
+        {"name": "slot-grep", "text": "Greps generated files for unreplaced <SLOT> placeholders"},
+        {"name": "reports-verification", "text": "Reports which checks were run and which were not"}
+      ]
+    }
+  ]
+}

@@ -32,7 +32,7 @@ Paths are relative to `repo` unless absolute. `owner_list`, `out` and
 | `wave.integration_branch`, `lane_branch` | Branch name patterns |
 | `wave.barrier_glob`, `barrier_launch`, `barrier_exit_regex` | Barrier attempt directories, their launch file, and the exit line (no exit line means running) |
 | `wave.verification_glob` | Green-barrier records; also drives History |
-| `wave.queue_file` | The next wave's queue. Entries are `- **name** — why` bullets |
+| `wave.queue_file` | The next wave's queue. Entries are `- **name**: why` bullets |
 | `wave.verify_glob`, `stage_prefix_regex`, `verdict_regex` | Panel records per lane, their stage prefix, and the verdict words |
 | `wave.build_marker` | A file whose presence means the lane built |
 | `wave.merge_subject_regex`, `approval_regex` | How a merge commit names the lane, and how it records the monitor's approval |

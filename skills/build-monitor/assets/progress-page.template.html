@@ -160,7 +160,7 @@ function render(){
         <thead><tr><th>Lane</th><th class="c">Cut</th><th class="c">Built</th><th>Review stages</th><th class="c">Approved</th><th class="c">Merged</th></tr></thead>
         <tbody>${rows}</tbody></table></div>
         <div class="steps"><span class="eyebrow">Barrier</span>${attempts}
-          <span class="muted" style="font-size:13px">${w.barrier.some(b => b.state === 'green') ? '' : left ? `${left} attempt${left > 1 ? 's' : ''} left${left === 1 ? ' — the last one removes lanes, never repairs' : ''}` : 'attempts spent'}</span></div>
+          <span class="muted" style="font-size:13px">${w.barrier.some(b => b.state === 'green') ? '' : left ? `${left} attempt${left > 1 ? 's' : ''} left${left === 1 ? ': the last one removes lanes, never repairs' : ''}` : 'attempts spent'}</span></div>
         <div class="steps"><span class="eyebrow">Record</span>${w.recorded ? '<span class="pill good">recorded</span>' : '<span class="pill plain">not recorded</span>'}
           ${w.pushed ? '<span class="pill good">pushed</span>' : '<span class="pill plain">not pushed</span>'}
           <span class="muted mono" style="font-size:12px">${esc(w.integration_head)}</span></div>

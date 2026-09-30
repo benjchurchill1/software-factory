@@ -13,8 +13,12 @@ import subprocess
 import tempfile
 import unittest
 
+import json
+import sys
+
 SKILL = Path(__file__).resolve().parents[1]
 LOOP = SKILL.parent / "build-loop"
+HOOKS = SKILL.parents[1] / "hooks"
 FULL = "a" * 40
 SLOT = re.compile(r"<[A-Z][A-Z0-9_]*(?::[^>]*|\s[^>]*)?>")
 
@@ -376,6 +380,162 @@ esac
                        "exhausted spend/deadline", "Seeded scoreboard", "restore into a disposable",
                        "Red barrier after an excluded lane", "Residual excluded schema"]:
             self.assertIn(clause, drills)
+
+
+class KeepAliveHook(unittest.TestCase):
+    """The Stop hook and its arming helper, against real git in temp repos."""
+
+    MARKER = "build-loop-test-nonce-0001"
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="keepalive fixture ")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.state = self.root / "state"
+        self.env = dict(os.environ, BUILD_LOOP_STATE_ROOT=str(self.state),
+                        GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t",
+                        GIT_COMMITTER_EMAIL="t@t")
+        self.assertIsNotNone(shutil.which("git"), "real Git is required for this fixture")
+        self.repo_a = self.repo("repo a")
+        self.repo_b = self.repo("repo-b")
+        self.transcript = self.root / "transcript.jsonl"
+        self.transcript.write_text(json.dumps({"text": "start the loop " + self.MARKER}) + "\n")
+
+    def repo(self, name):
+        path = self.root / name
+        path.mkdir()
+        self.git(path, "init", "-q", "-b", "trunk")
+        self.commit(path)
+        return path
+
+    def git(self, path, *args):
+        subprocess.run(["git", "-C", str(path), *args], check=True, env=self.env,
+                       capture_output=True)
+
+    def commit(self, path):
+        self.git(path, "commit", "-q", "--allow-empty", "-m", "c")
+
+    def arm(self, repo, *extra):
+        out = subprocess.run([sys.executable, str(HOOKS / "arm.py"), "arm", str(repo),
+                              "--marker", self.MARKER, *extra], env=self.env,
+                             capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return Path(re.search(r"stop\s+(.+)", out.stdout).group(1).strip())
+
+    def stop(self, cwd, session="s1", transcript=None):
+        payload = {"session_id": session, "cwd": str(cwd),
+                   "transcript_path": str(transcript or self.transcript)}
+        out = subprocess.run([sys.executable, str(HOOKS / "build-loop-continue.py")],
+                             input=json.dumps(payload), env=self.env, capture_output=True,
+                             text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout) if out.stdout.strip() else None
+
+    def test_unarmed_allows(self):
+        self.assertIsNone(self.stop(self.repo_a))
+
+    def test_holds_only_the_marked_session_inside_the_repo(self):
+        self.arm(self.repo_a, "--exclude", "monitor")
+        self.assertEqual(self.stop(self.repo_a / "sub")["decision"], "block")
+        self.assertIsNone(self.stop(self.repo_b))
+        self.assertIsNone(self.stop(self.repo_a, session="monitor"))
+        other = self.root / "other.jsonl"
+        other.write_text("no nonce here\n")
+        self.assertIsNone(self.stop(self.repo_a, transcript=other))
+
+    def test_progress_resets_the_consecutive_count(self):
+        self.arm(self.repo_a, "--max", "2")
+        self.assertIn("(1 of 2", self.stop(self.repo_a)["reason"])
+        self.assertIn("(2 of 2", self.stop(self.repo_a)["reason"])
+        self.commit(self.repo_a)  # a lane or barrier commit is progress
+        self.assertIn("(1 of 2", self.stop(self.repo_a)["reason"])
+        self.stop(self.repo_a)
+        spent = self.stop(self.repo_a)
+        self.assertIn("SPENT", spent["reason"])
+        self.assertIsNone(self.stop(self.repo_a), "a spent hook disarms itself")
+
+    def test_total_cap_holds_even_with_progress(self):
+        self.arm(self.repo_a, "--max", "5", "--max-total", "2")
+        self.stop(self.repo_a)
+        self.commit(self.repo_a)
+        self.stop(self.repo_a)
+        self.commit(self.repo_a)
+        self.assertIn("in this arming", self.stop(self.repo_a)["reason"])
+
+    def test_state_is_per_repo(self):
+        stop_a = self.arm(self.repo_a)
+        stop_b = self.arm(self.repo_b)
+        self.assertNotEqual(stop_a, stop_b)
+        stop_a.write_text("done\n")
+        self.assertIsNone(self.stop(self.repo_a))
+        self.assertEqual(self.stop(self.repo_b)["decision"], "block")
+        self.assertIn(str(stop_b), self.stop(self.repo_b)["reason"])
+
+    def test_prompt_path_is_named_in_the_reason(self):
+        self.arm(self.repo_a, "--prompt-path", "prompts/loop.md")
+        self.assertIn("Re-read prompts/loop.md", self.stop(self.repo_a)["reason"])
+
+    def test_rearming_clears_stop_and_resets(self):
+        stop = self.arm(self.repo_a, "--max", "1")
+        self.stop(self.repo_a)
+        stop.write_text("stalled\n")
+        self.assertIsNone(self.stop(self.repo_a))
+        self.arm(self.repo_a, "--max", "1")
+        self.assertIn("(1 of 1", self.stop(self.repo_a)["reason"])
+
+    def test_legacy_arming_still_honoured(self):
+        self.state.mkdir()
+        (self.state / "armed.json").write_text(json.dumps(
+            {"cwd_prefix": str(self.repo_a), "marker": self.MARKER, "max": 3}))
+        self.assertEqual(self.stop(self.repo_a)["decision"], "block")
+        (self.state / "stop").write_text("done\n")
+        self.assertIsNone(self.stop(self.repo_a))
+
+    def test_stale_arming_and_bad_input_allow(self):
+        self.arm(self.repo_a)
+        armed = next(self.state.glob("*/armed.json"))
+        old = armed.stat().st_mtime - 73 * 3600
+        os.utime(armed, (old, old))
+        self.assertIsNone(self.stop(self.repo_a))
+        out = subprocess.run([sys.executable, str(HOOKS / "build-loop-continue.py")],
+                             input="not json", env=self.env, capture_output=True, text=True)
+        self.assertEqual((out.returncode, out.stdout), (0, ""))
+
+
+class HouseStyle(unittest.TestCase):
+    """Prose in the plugin uses UK spelling and no em dashes.
+
+    The only em dashes allowed are in progress.py, which still parses them in
+    queue, owner-list and merge-subject lines written by older builds.
+    """
+
+    REPO = SKILL.parents[1]
+    US = re.compile(r"\b(behavior\w*|normaliz\w*|serializ\w*|organiz\w*|recogniz\w*|"
+                    r"prioritiz\w*|summariz\w*|optimiz\w*|authoriz\w*|initializ\w*|"
+                    r"minimiz\w*|maximiz\w*|categoriz\w*|standardiz\w*|utiliz\w*|"
+                    r"artifacts?\b(?!_url)|judgment|canceled|labeled|modeling|honestly)", re.I)
+
+    def texts(self):
+        for path in sorted(self.REPO.rglob("*")):
+            if path.is_file() and ".git" not in path.parts and "__pycache__" not in path.parts \
+                    and path.suffix in {".md", ".sh", ".json", ".html", ".py"}:
+                yield path, path.read_text(errors="replace")
+
+    def test_no_em_dashes(self):
+        for path, text in self.texts():
+            if path.name in {"progress.py", "verify-factory.py"}:
+                continue
+            with self.subTest(path=str(path.relative_to(self.REPO))):
+                self.assertNotIn("\u2014", text)
+
+    def test_uk_spelling(self):
+        for path, text in self.texts():
+            if path.suffix != ".md":
+                continue
+            # The Artifact tool is a product name; the rule is about prose.
+            prose = re.sub(r"`[^`]*`|Artifact tool|an artifact\b", "", text)
+            with self.subTest(path=str(path.relative_to(self.REPO))):
+                self.assertEqual(self.US.findall(prose), [])
 
 
 if __name__ == "__main__":

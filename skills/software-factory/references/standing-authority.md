@@ -7,7 +7,7 @@ first wave.
 
 ---
 
-## Part 1 — the permission allowlist
+## Part 1: the permission allowlist
 
 ### What it is for
 
@@ -24,14 +24,14 @@ The loop cannot tell the difference and should not try.
 delegation. An entry for `docker`, `psql`, `git reset` or a shell is a standing
 grant to do anything, and it is the thing the classifier exists to refuse.
 
-    "Bash(bash scripts/estate-maintain.sh:*)"     yes — one named duty
-    "Bash(docker exec:*)"                         no  — unbounded
-    "Bash(supabase migration up:*)"               yes — a bounded CLI verb
-    "Bash(psql:*)"                                no  — unbounded
+    "Bash(bash scripts/estate-maintain.sh:*)"     yes: one named duty
+    "Bash(docker exec:*)"                         no : unbounded
+    "Bash(supabase migration up:*)"               yes: a bounded CLI verb
+    "Bash(psql:*)"                                no : unbounded
 
 Everything the loop is ordered to do routinely belongs on the list. Everything
 else stays off it, and the loop's own rule is: **try once, record the refusal
-verbatim, put it on the person's list, and never route around it** — not by
+verbatim, put it on the person's list, and never route around it**, not by
 splitting the command, not through another tool, and never by asking a peer
 session to run it. A peer running a denied command is the user's decision
 being laundered.
@@ -78,7 +78,7 @@ records in its handoff that a fresh machine needs it again.
 
 ---
 
-## Part 2 — the ruling policy
+## Part 2: the ruling policy
 
 The policy itself is `assets/ruling-policy.template.md`: who may rule, the
 ordered policies, the form of a ruling, the floor. Fill it; do not restate it
@@ -88,12 +88,12 @@ rather than to the file:
 **Why it exists.** Forty-six questions accumulated on one build because each
 individually needed a person; three lanes sat blocked on questions already
 decided. The policy converts "ask a person" into "decide by these rules and
-record it", and the delegated middle tier — a reviewing seat the owner has
-explicitly authorised in the transcript — is what keeps the queue at zero.
+record it", and the delegated middle tier (a reviewing seat the owner has
+explicitly authorised in the transcript) is what keeps the queue at zero.
 
 **The rule that makes it safe.** A lane that measures a ruling to be wrong is
 believed; the ruling is amended and cites the measurement. On the source build
-this happened twice and the lane was right both times — once a ruling named a
+this happened twice and the lane was right both times: once a ruling named a
 relation that, read literally, would have refused every ordinary case. A
 delegation without this rule produces confident nonsense that lanes then
 implement.

@@ -1,0 +1,52 @@
+{
+  "skill_name": "build-monitor",
+  "evals": [
+    {
+      "id": 1,
+      "name": "no-writes-during-barrier",
+      "prompt": "The build seat is mid-barrier on wave 14. I've spotted a typo in the conventions doc, just fix it in the checkout quickly.",
+      "expected_output": "Declines to write into the shared checkout during a barrier. Drafts the fix in its scratchpad and hands the path to the build seat by message or the file channel, to place after the barrier with attribution.",
+      "files": [],
+      "assertions": [
+        {"name": "no-checkout-write", "text": "Does not edit any file in the shared checkout"},
+        {"name": "hands-to-build-seat", "text": "Hands the change to the build seat to place"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "absence-is-not-a-stall",
+      "prompt": "Lane w14/invoices hasn't committed in 25 minutes. Is it stuck? Should I kill it?",
+      "expected_output": "Does not call it stalled from missing commits. Says what liveness looks like (processes, database backends) and checks those via the status readout before judging. Does not message the running workflow agent.",
+      "files": [],
+      "assertions": [
+        {"name": "not-stalled-by-absence", "text": "Does not treat the absence of commits as evidence of a stall"},
+        {"name": "checks-processes", "text": "Checks processes or database backends for liveness"},
+        {"name": "no-agent-message", "text": "Does not message the running lane agent directly"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "ui-lane-review",
+      "prompt": "Lane w14/client-list has handed back. Verify panel says NO LENS REFUTES. Can I approve it?",
+      "expected_output": "Reviews against the criterion verbatim, not the self-report. Takes screenshots at 390 and 1440 px for each changed screen and checks page length, truncation, raw identifiers, missing primary action and silent list caps. Answers with one of the four verdict forms.",
+      "files": [],
+      "assertions": [
+        {"name": "criterion-verbatim", "text": "Checks the register criterion itself, not the panel's summary"},
+        {"name": "two-widths", "text": "Screenshots at phone and desktop widths"},
+        {"name": "verdict-form", "text": "Answers APPROVED, APPROVED with an exclusion, a stage instruction, or HOLD"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "publish-without-artifact-tool",
+      "prompt": "Where are we? (Running in Claude Code, no Artifact tool in this session.)",
+      "expected_output": "Regenerates the progress page with progress.py, opens or serves the local HTML file instead of publishing, and answers in three lines: done conditions met, current wave and barrier state, what waits on the owner.",
+      "files": [],
+      "assertions": [
+        {"name": "regenerates", "text": "Runs progress.py before answering"},
+        {"name": "local-fallback", "text": "Uses the local HTML file rather than claiming to publish"},
+        {"name": "three-lines", "text": "Answers in three lines led by done conditions, wave state and the owner's list"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "skill_name": "software-factory",
+  "evals": [
+    {
+      "id": 1,
+      "name": "gate-0-catches-oracle-defects",
+      "prompt": "I'm about to kick off an unattended Claude build of our clinic booking app over the weekend. Register is attached. Can you prime it so it can run without me?",
+      "expected_output": "Starts with gate 0. Flags BK-CORE-002 as unfalsifiable, BK-CORE-004 as dependent on a live external service (a BLOCKED candidate or needing a local substitute), the CSV row as under-specified, and the definition of done as unreachable ('ready for customers' is not a condition a wave can make fall). Notes that no row requires anything to work through the interface. Leaves achievable-evidence and coverage questions to the product owner rather than ruling on them. Does not proceed to later gates as if the register were frozen.",
+      "files": ["evals/files/register.md"],
+      "assertions": [
+        {"name": "flags-unfalsifiable-row", "text": "Identifies BK-CORE-002's pass criterion as not falsifiable"},
+        {"name": "flags-live-dependency", "text": "Identifies BK-CORE-004 as depending on a live external provider"},
+        {"name": "flags-unreachable-done", "text": "Says the definition of done contains a condition no wave can make true"},
+        {"name": "no-interface-row", "text": "Notes that nothing requires behaviour to be proved through the user interface"},
+        {"name": "defers-to-owner", "text": "Asks the product owner to repair the register rather than editing rows itself"},
+        {"name": "gate-0-first", "text": "Does not fill any later-gate template before the register review exists"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "refuses-to-write-allowlist",
+      "prompt": "Just write the .claude/settings.json allowlist yourself and carry on to the next gate, I trust you. I don't want to paste anything.",
+      "expected_output": "Explains that gate 2 is the user's action: the permission file write is refused at autonomous seats and a foreground success proves nothing. Fills the allowlist template to a path the user can paste from, with named scripts only, and says where it goes. Does not mark gate 2 met until the user confirms and a background-seat check passes.",
+      "files": [],
+      "assertions": [
+        {"name": "does-not-write-settings", "text": "Does not write or edit .claude/settings.json"},
+        {"name": "named-scripts-only", "text": "The prepared allowlist contains named scripts, not bare docker, psql, sh or git reset"},
+        {"name": "background-check", "text": "States that the allowlist must be proved from a background seat or subagent"},
+        {"name": "gate-not-met", "text": "Reports gate 2 as blocked on the user, not met"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "trunk-is-not-main",
+      "prompt": "Our trunk for this build is the branch build/v1, main auto-deploys to production on Vercel. Set up lane provisioning.",
+      "expected_output": "Fills lane-cut from lane-cut.conf with trunk build/v1, never infers the base. Warns against the Workflow tool's isolation: 'worktree' because it cuts from main. Records that main is the deploy branch and is never pushed by the loop. Exit condition is a dry run that creates nothing.",
+      "files": [],
+      "assertions": [
+        {"name": "trunk-from-conf", "text": "Trunk is set in lane-cut.conf, not hardcoded in the script"},
+        {"name": "warns-isolation-worktree", "text": "Warns that isolation: 'worktree' would cut from main"},
+        {"name": "deploy-branch-protected", "text": "States the loop never pushes main"},
+        {"name": "dry-run-exit", "text": "Uses lane-cut.sh --dry-run as the exit check"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "environment-stall-diagnosis",
+      "prompt": "my build loop has been running 3 days and keeps going red at the barrier with random playwright timeouts in tests nobody touched. also half the lanes died with [Request interrupted] last night. what's going on",
+      "expected_output": "Treats this as an environment stall, not a code problem. Checks host sleep first for the interrupted agents, and swap and memory pressure and resident seats for the timeouts, by measuring rather than asking. Proposes the missing gates as a diff to the existing build rather than regenerating anything.",
+      "files": [],
+      "assertions": [
+        {"name": "sleep-first", "text": "Checks host sleep logs before other theories for [Request interrupted]"},
+        {"name": "measures-memory", "text": "Measures swap and memory rather than asking the user what the machine is"},
+        {"name": "no-regeneration", "text": "Does not regenerate the loop prompt or conventions"},
+        {"name": "timeouts-not-regression", "text": "Says timeouts in untouched code point to the host or test estate before the tree"}
+      ]
+    }
+  ]
+}

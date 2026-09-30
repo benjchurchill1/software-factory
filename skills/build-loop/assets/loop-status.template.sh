@@ -28,7 +28,7 @@ checks=$(ps -Ao command | grep -cE '^<CHECK_COMMAND>$')
 echo "  <CHECK_COMMAND>: ${checks}"
 if [ "$checks" -gt 1 ]; then
   echo "  WARN  more than one full run is live. They do not share the wall-clock,"
-  echo "        they build a convoy — see the conventions doc. Leave ONE."
+  echo "        they build a convoy: see the conventions doc. Leave ONE."
   warn=1
 fi
 
@@ -38,7 +38,7 @@ orphans=$(ps -Ao pid,ppid,command | awk '$2 == 1 && /<TEST_PROCESS_PATTERN>/ { p
 if [ -n "$orphans" ]; then
   echo "  WARN  orphaned runs (parent gone, still running):"
   for p in $orphans; do
-    echo "        pid $p — $(ps -o etime=,pcpu= -p "$p" 2>/dev/null | tr -s ' ')"
+    echo "        pid $p: $(ps -o etime=,pcpu= -p "$p" 2>/dev/null | tr -s ' ')"
   done
   echo "        kill $(echo "$orphans" | tr '\n' ' ')"
   echo "        …then re-run this script: killing these does NOT free their work."
@@ -47,7 +47,7 @@ fi
 
 echo "── <SINGLETON> ─────────────────────────────────────────────────────"
 if ! <SINGLETON_UP_CHECK>; then
-  echo "  WARN  <SINGLETON> is not available — the shared suites cannot pass."
+  echo "  WARN  <SINGLETON> is not available: the shared suites cannot pass."
   warn=1
 else
   # <CONTENTION_QUERY> must report how many operations are waiting and the
@@ -58,7 +58,7 @@ else
   # explains the rest.
   chain=$(<CONTENTION_CHAIN_QUERY>)
   if [ -n "$chain" ]; then
-    echo "  WARN  waiting longer than a minute — head of the queue first:"
+    echo "  WARN  waiting longer than a minute: head of the queue first:"
     echo "$chain" | sed 's/^/        /'
     warn=1
   fi
@@ -89,7 +89,7 @@ if [ -f "$progress" ]; then
   echo "  $(grep -oE '<VERDICT_PATTERN>' "$progress" | sort | uniq -c | tr -s ' \n' ' ')"
   echo "  last log entry:  $(grep -oE '^\- \*\*[^*]+\*\*' "$progress" | tail -1 | sed 's/^- \*\*//;s/\*\*$//')"
 else
-  echo "  (no scoreboard yet — the loop has not run wave zero)"
+  echo "  (no scoreboard yet: the loop has not run wave zero)"
 fi
 
 echo "── machine ─────────────────────────────────────────────────────────"
@@ -99,5 +99,5 @@ echo
 if [ "$warn" -eq 0 ]; then
   echo "Nothing to act on."
 else
-  echo "Warnings above. Nothing has been changed — every fix is yours to run."
+  echo "Warnings above. Nothing has been changed: every fix is yours to run."
 fi

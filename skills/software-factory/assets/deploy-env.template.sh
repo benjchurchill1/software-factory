@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy-<ENV>.sh <commit> — deploy one commit of this repo to <ENV>.
+# deploy-<ENV>.sh <commit>: deploy one commit of this repo to <ENV>.
 #
 # WHY A SCRIPT AND NOT A COMMAND. Three failures this shape prevents, all
 # measured on one build:
@@ -9,7 +9,7 @@
 #   * A DEPLOY THAT DID NOTHING. The script lived in a temp directory, a reboot
 #     removed it, and the next "deploy" reported success having done nothing.
 #     The discrepancy surfaced only because a second agent contradicted the
-#     first. KEEP THIS FILE IN THE REPO, or in a durable state directory —
+#     first. KEEP THIS FILE IN THE REPO, or in a durable state directory:
 #     never in a scratch or temp path.
 #   * A DEPLOY NOBODY VERIFIED. Reporting the platform's SUCCESS is not
 #     evidence that the new code is being served. §4 checks the artefact.
@@ -65,7 +65,7 @@ assert_tree
 ok=$(<LIST_SERVICES_COMMAND> | grep -c "$SERVICE <LINKED_MARKER>" || true)
 bad=$(<LIST_SERVICES_COMMAND> | grep -c "$FORBIDDEN <LINKED_MARKER>" || true)
 if [ "$ok" != "1" ] || [ "$bad" != "0" ]; then
-  echo "GUARD FAILED target_linked=$ok forbidden_linked=$bad — NOT deploying"; exit 4
+  echo "GUARD FAILED target_linked=$ok forbidden_linked=$bad: NOT deploying"; exit 4
 fi
 echo "GUARD OK: $SERVICE is linked, $FORBIDDEN is not"
 assert_tree

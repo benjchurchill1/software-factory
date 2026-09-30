@@ -2,7 +2,7 @@
 
 Ask in this order. Later sections depend on earlier answers.
 
-Do not ask what the repo already answers — confirm it instead ("I see
+Do not ask what the repo already answers: confirm it instead ("I see
 `bun run check` runs typecheck, lint, tests and a smoke; is that green?").
 Batch two or three related questions per message; a twenty-question form gets
 answered carelessly.
@@ -19,33 +19,33 @@ given.
 - Which branch does the loop work on? (never `main`; default `autobuild/v1`)
 - Is there existing work, or is this greenfield? If existing, what state is it in?
 
-## 2. The oracle — CHALLENGE
+## 2. The oracle: CHALLENGE
 
 The single most important answer. Everything else is downstream.
 
 - **Which file decides whether a requirement is met?** Path.
 - How is a row identified? (`PM-BIL-02`-style IDs, or something else)
-- What does a row carry — a pass criterion, a verify method, a release/scope tag?
+- What does a row carry: a pass criterion, a verify method, a release/scope tag?
 - **Who may change it?**
 
 **Reject and re-ask if:**
 
 - *"The tests."* Tests are written by the loop. An oracle the loop can edit is
-  not an oracle — it is the loop marking its own homework with extra steps.
+  not an oracle: it is the loop marking its own homework with extra steps.
 - *"The loop decides when a feature is done."* Same defect, stated plainly.
 - *"The design docs."* Prose is not a criterion. Ask what a passing row looks
   like when executed. If the answer is "you'd have to read it and judge", the
-  register does not exist yet and writing it is wave zero — say so.
+  register does not exist yet and writing it is wave zero: say so.
 - **Rows carry no pass criterion.** The loop cannot test an aspiration. Either
   criteria get written first, or the first wave writes them and a human approves
   them before any building starts.
 
 **Also establish:** what happens when a row turns out to be wrong. There must be
 a verdict for "this requirement is itself defective" that does not involve
-editing the register — otherwise the loop's only route past a bad row is to
+editing the register: otherwise the loop's only route past a bad row is to
 quietly change the contract.
 
-## 3. Green — CHALLENGE
+## 3. Green: CHALLENGE
 
 - **What single command means green?**
 - What does it cover: types, lint, unit tests, integration tests against the
@@ -61,7 +61,7 @@ quietly change the contract.
 - **Nothing in it starts the product.** Name the blind spot in the generated
   conventions doc. Types, lint and unit tests start no server: a module that
   exports the wrong shape, a call site passing credentials the runtime cannot
-  read, a route that 200s with an empty body — none are reachable by a test over
+  read, a route that 200s with an empty body: none are reachable by a test over
   a pure function, because the defect is in the composition rather than in any
   function. A loop with no runtime check will accumulate these behind a green
   barrier and find them all at once, late.
@@ -72,7 +72,7 @@ The question that decides whether the loop's parallelism is real.
 
 - **What one mutable resource do all lanes share?** A local database, a staging
   environment, a device, a rate-limited API, a build cache.
-- **Who owns it?** Exactly one role — the orchestrator. Builders never mutate it.
+- **Who owns it?** Exactly one role: the orchestrator. Builders never mutate it.
 - **What makes concurrent work on it safe?** Per-test tenancy, namespacing,
   separate schemas, per-worker accounts.
 - **What operations are NOT covered by that isolation?**
@@ -83,7 +83,7 @@ the answer out with examples in the project's own terms:
 
 | Isolation | What it does not scope |
 | --- | --- |
-| a tenant/row key in a database | `ALTER TABLE`, `TRUNCATE`, migrations, `VACUUM FULL` — whole-table locks no key narrows |
+| a tenant/row key in a database | `ALTER TABLE`, `TRUNCATE`, migrations, `VACUUM FULL`: whole-table locks no key narrows |
 | a per-worker account on an API | the shared rate limit, global config, account-wide state |
 | a namespace in a cluster | CRDs, admission webhooks, node capacity |
 | a directory per worker | the package registry, a global lockfile, the port range |
@@ -96,11 +96,11 @@ everything.
 Then ask the operational half:
 
 - **How is a run of the check identified?** If the answer is "it isn't", the
-  generated conventions doc gets the tagging rule — every connection, session or
+  generated conventions doc gets the tagging rule: every connection, session or
   job carries the run's name, so a leftover can be found and reaped by name
   rather than by forensics.
 - **Does killing a run release the resource?** Usually not. Long-running work
-  frequently outlives the process that started it — a database backend does not
+  frequently outlives the process that started it: a database backend does not
   notice a dead client while it is waiting on a lock; a queued job survives its
   submitter. The generated doc says so and gives the reap command.
 
@@ -113,19 +113,19 @@ Then ask the operational half:
 
 That last one matters more than it looks. A rule with no escape hatch gets
 circumvented rather than obeyed. The usual shape: write a successor, name the
-predecessor, record why, and let a privileged step do the deletion — so what is
+predecessor, record why, and let a privileged step do the deletion, so what is
 no longer running is visible in one place rather than silently dropped.
 
-## 6. Verdicts and the blocked list — CHALLENGE
+## 6. Verdicts and the blocked list: CHALLENGE
 
 - What verdicts may a row end in? Default: `PASS`, `BLOCKED(<dependency>)`,
   `DISPUTED(<reason>)`.
 - What counts as evidence for a PASS? (must be executed: a test run, a script
-  output, an artefact path — never "it should work")
+  output, an artefact path, never "it should work")
 - **Enumerate every legitimate reason a row cannot be finished locally.**
 
 **Reject and re-ask if the list is open-ended.** "Some things will need
-credentials" is not a list. Demand the actual set — each with what a human must
+credentials" is not a list. Demand the actual set: each with what a human must
 supply, and what the loop builds in the meantime (an interface, a fake, a
 mock-based test). Anything not on the closed list is not blocked, it is `stuck`,
 and `stuck` has an anti-spin rule. Without that distinction a loop parks its
@@ -142,7 +142,7 @@ nothing. Verification is a separate pass with fresh context, told to refute.
 - How many verifier lenses per row, and which rows get a panel? (security,
   money, data-integrity rows usually get three: correctness,
   permissions, isolation-and-concurrency)
-- What is the build order — which subsystems must exist before which?
+- What is the build order: which subsystems must exist before which?
 
 ## 8. The record
 
@@ -154,7 +154,7 @@ nothing. Verification is a separate pass with fresh context, told to refute.
   bounded: after every green barrier's record, fast-forward only, the loop's
   branch only, never `--force`. **Which branch does the platform deploy from?**
   That branch is never the trunk and never pushed by the loop.
-- Who reads the output? The tone rule follows from this — a file read by someone
+- Who reads the output? The tone rule follows from this: a file read by someone
   who was not watching needs plain verdicts and real paths, not cheerleading.
 
 ## 9. Stop conditions
@@ -189,7 +189,7 @@ a loop built on a misheard oracle is not.
 ## Answer → slot
 
 Which answer fills which template slot. Slots appear as `<NAME>` or
-`<NAME — what goes here>`; both must be replaced.
+`<NAME: what goes here>`; both must be replaced.
 
 | Interview answer | Fills |
 | --- | --- |
@@ -215,7 +215,7 @@ Which answer fills which template slot. Slots appear as `<NAME>` or
 | the record | `<PROGRESS_PATH>`, `<ASSESSMENT_PATH>`, `<HANDOFF_PATH>`, `<MEMORY_APPEND_RULE>`, `<VERDICT_PATTERN>` |
 | persistent accounting and recovery, total and per-wave ceilings | `<RUN_STATE_DIR>`, `<SPEND_LIMIT>`, `<WAVE_SPEND_LIMIT>`, `<TIME_LIMIT_MINUTES>`, `<WAVE_TIME_LIMIT_MINUTES>`, `<HANDOFF_RESERVE>` |
 | deploy and push policy; the branch the platform deploys from | `<DEPLOY_SCOPE>`, `<PUSH_RULE>`, `<DEPLOY_BRANCH>` |
-| **settled by `software-factory`, if it ran first** — do not re-ask | |
+| **settled by `software-factory`, if it ran first**: do not re-ask | |
 | the rig doc: do-not-run list, seat cap, pre-launch swap check | `<DO_NOT_RUN>` |
 | the permission allowlist's path | `<ALLOWLIST_PATH>` |
 | the ruling policy's path (the ladder's autonomous terminal) | `<RULING_POLICY_PATH>` |
@@ -230,5 +230,5 @@ Which answer fills which template slot. Slots appear as `<NAME>` or
 
 If an answer does not exist for a slot, do not invent one and do not leave the
 slot. Either drop the sentence, or state the gap in the generated file as
-something wave zero must establish — a loop told "this is not decided yet" behaves
+something wave zero must establish: a loop told "this is not decided yet" behaves
 better than one handed a plausible guess.

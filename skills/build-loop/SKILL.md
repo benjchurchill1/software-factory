@@ -1,6 +1,6 @@
 ---
 name: build-loop
-description: Interview the user about a register-driven product build, then emit a bespoke autonomous build-and-test loop for Claude Code — the loop prompt itself, a shared-resource conventions doc, a status readout, and a seeded scoreboard. Use when someone wants to set up an autonomous or unattended build loop, a "run until every requirement passes" agent, a wave-based build with adversarial verification, or wants to adapt an existing build-loop prompt to another project. Also use when an existing loop stalls, mistakes a busy machine for a failing feature, marks its own work PASS, or has no closed definition of done.
+description: Write, or adapt, the loop prompt for a register-driven autonomous build in Claude Code, with its conventions doc, status readout and seeded scoreboard. Waves run parallel builders in worktrees, adversarial verify panels, and one serial barrier. Use when software-factory hands off at the end of priming, when someone asks for a "run until every requirement passes" prompt, or when an existing loop prompt has a logic flaw: builders mark their own work PASS, the loop retires sound tests when the machine is merely busy, the blocked list is open-ended, or there is no stop condition or closed definition of done. For a brand-new build, start with software-factory instead. For a loop stalling on the machine, permissions or queued questions, use software-factory.
 ---
 
 # Build loop
@@ -10,7 +10,7 @@ project it has never seen, and trust the result of.
 
 The loop being generated is a **register-driven product build**: a file of
 requirement rows is the work queue, the test oracle and the definition of done.
-Work proceeds in waves — parallel builders in worktrees, one serial barrier
+Work proceeds in waves: parallel builders in worktrees, one serial barrier
 where shared state is mutated, parallel adversarial verifiers afterwards.
 
 ## What gets written
@@ -32,7 +32,7 @@ until a human notices the wall-clock.
 ## Before this: the factory
 
 The loop is only half of what an unattended build needs. The **software-factory**
-skill primes the other half — the rig's memory budget, the permission allowlist
+skill primes the other half: the rig's memory budget, the permission allowlist
 so the loop can run its own maintenance, a ruling policy so judgement calls do
 not queue on a person, the test-data lifecycle, per-lane databases, and
 regenerated state. Those are what decide whether a loop finishes; measured over
@@ -57,7 +57,7 @@ answer.
 
 ### 2. Interview
 
-Follow **[references/interview.md](references/interview.md)** — the full question
+Follow **[references/interview.md](references/interview.md)**: the full question
 set in order, with the specific answers that must be pushed back on.
 
 Three answers are load-bearing and get challenged rather than recorded:
@@ -66,7 +66,7 @@ Three answers are load-bearing and get challenged rather than recorded:
   loop has no oracle. Tests are written by the loop; an oracle the loop can edit
   is not one. Ask again for something the loop may never change.
 - **Green.** If no single command means green, or the named command does not yet
-  exist, that is wave zero's first job — not something to discover mid-build.
+  exist, that is wave zero's first job, not something to discover mid-build.
 - **The blocked list.** It must be closed and enumerated. An open-ended "some
   rows can't be done locally" is how a loop stops working while looking busy.
 
@@ -75,19 +75,24 @@ Everything else is taken at face value.
 ### 3. Emit
 
 Fill the templates in `assets/`. Every `<SLOT>` must be replaced or deliberately
-removed — a slot left in a generated file is a defect, so grep for `<` before
+removed: a slot left in a generated file is a defect, so grep for `<` before
 finishing.
 
 Read **[references/loop-anatomy.md](references/loop-anatomy.md)** while filling
 them: it says what each section of the loop prompt is defending against, which
 is what decides whether a section can be trimmed for a given project.
 
-Seed the scoreboard from the register: one line per in-scope row, verdict
-`TODO`, plus an empty `## Log` section. The loop derives its state from this
-file, so it must exist before the first wave.
-Seed a separate checkpoint with `bootstrap_complete: false`; scoreboard
-existence must never bypass wave zero. Fill the persistent budget/recovery slots
-from the factory handover or interview, and preserve them when resuming.
+Seed two files before the first wave:
+
+- **The scoreboard**, from the register: one line per in-scope row, verdict
+  `TODO`, plus an empty `## Log` section. The loop derives its state from it.
+- **The checkpoint**, with `bootstrap_complete: false`. Wave zero sets it. The
+  scoreboard existing is never evidence that wave zero ran, so a resumed loop
+  checks the checkpoint, not the scoreboard.
+
+Fill the budget and recovery slots from the factory handover, or the interview
+if there was none. When adapting a running loop, keep the values it already
+has.
 
 ### 4. Verify before handing over
 
@@ -96,13 +101,14 @@ Do not hand over an unrun loop.
 - Run the generated `loop-status.sh`. It must execute and print, with the shared
   resource up and down.
 - Run the project's check command. It must exist and terminate. If it is red,
-  say so — the loop's first wave will inherit that.
+  say so: the loop's first wave will inherit that.
 - Confirm the scoreboard's row count matches the register's in-scope row count.
 - Grep the generated files for unreplaced slots.
-- Check ownerless WIP retry, empty-frontier dependency stalls and bootstrap
-  completion against the template contract. Record the factory recovery drills
-  from `software-factory/references/recovery.md`; do not claim that a prose
-  protocol alone proves restart safety.
+- Read the generated prompt's §Persistent budgets and recovery against three cases: a `WIP` row whose
+  owner is gone is retried; an empty frontier with rows still open is reported
+  as a dependency stall, not done; a restart before `bootstrap_complete` reruns
+  wave zero. Restart safety is only shown by running the drills in
+  `software-factory/references/recovery.md`; say which were run.
 
 Report what was verified and what was not.
 
@@ -116,25 +122,27 @@ Three things start with it, and each cost the source build at least one lane or
 barrier when missing:
 
 - **The keep-alive Stop hook.** A loop seat ends its turn after a wave or a
-  barrier and nothing re-invokes it. The hook blocks that stop, bounded: armed
-  by a file naming a marker phrase from the loop prompt (so only the seat
-  running the loop is held, never a peer), a stop file the seat writes with one
-  line when it halts on purpose, a cap on consecutive continuations, and an
-  arming expiry. This plugin ships it as `hooks/build-loop-continue.sh` and
-  registers it as a Stop hook; it does nothing until armed. Arm it by writing
-  `~/.claude/state/build-loop/armed.json` (`cwd_prefix`, `marker`, `max`,
-  `exclude_sessions`); the seat halts on purpose by writing
-  `~/.claude/state/build-loop/stop`; arming expires after `MAX_AGE_H` (72 h).
-  Arming is the user's action, as gate 2 of the factory is.
+  barrier and nothing re-invokes it. This plugin registers a Stop hook
+  (`hooks/build-loop-continue.py`) that blocks that stop, within bounds. It
+  does nothing until the owner arms it for this repo:
+  `python3 hooks/arm.py arm <repo> --marker <nonce> --exclude <monitor session>`,
+  with the nonce from `arm.py nonce` placed in the prompt the owner pastes (not
+  in the prompt file, which the monitor reads). Pass `--prompt-path` if the
+  loop prompt is not at the default path. The hook holds only the marked
+  session; caps consecutive continuations without a new commit (`--max`,
+  default 60) and continuations per arming (`--max-total`, default 500);
+  expires after 72 hours; and tells the seat the stop-file path to write, with
+  one line, when it halts on purpose. Arming is the owner's action, as gate 2
+  of the factory is.
 - **The monitor seat.** A second session started with `build-monitor`, beside
   the build seat for the life of the build: it approves each lane before merge,
   rules within the delegation, shapes the next wave's queue, runs staging and
   its falsifiers, and reads `loop-status.sh` for liveness. §Seats in the
   conventions doc is its contract.
-- **The host kept awake.** On macOS, `caffeinate -dimsu -t 21600` in the
-  background before lanes or a barrier, and `pmset -g assertions` showing
-  `PreventSystemSleep 1`. Agents that die "[Request interrupted]" are checked
-  against `pmset -g log` first: at wave 109 five died in a row because the Mac
+- **The host kept awake.** Before lanes or a barrier, run the hold from the
+  rig doc's §Host sleep for this OS (`caffeinate` on macOS, `systemd-inhibit`
+  on Linux) and confirm it. Agents that die "[Request interrupted]" are checked
+  against the sleep log first: at wave 109 five died in a row because the Mac
   was entering maintenance sleep.
 
 ## Adapting an existing loop
@@ -145,7 +153,7 @@ gaps, in the order they cause damage:
 
 1. No shared-resource law, or one that assumes row-level isolation covers
    whole-resource operations.
-2. No rule that contention is not refutation — the loop retires sound tests when
+2. No rule that contention is not refutation: the loop retires sound tests when
    the machine is merely busy.
 3. Builders permitted to record their own verdicts.
 4. An open-ended blocked list.

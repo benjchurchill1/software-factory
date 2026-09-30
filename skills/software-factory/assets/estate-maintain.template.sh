@@ -9,7 +9,7 @@
 # WHY IT IS A SCRIPT AND NOT A GRANT. A loop that can vacuum its own database
 # whenever a number disappoints it is a loop that can make any performance gate
 # green. This is one named duty, on the permission allowlist by name, appending
-# to an evidence log — so `git log -p` on that log is the complete history of
+# to an evidence log: so `git log -p` on that log is the complete history of
 # every time the estate was touched.
 #
 # WHEN IT RUNS. Once per barrier attempt, BEFORE the check, from the repo root.
@@ -17,13 +17,13 @@
 #
 # WHAT IT DOES NOT DO. It never passes the reaper's `--all`-class flag. It does
 # not reindex. It does not reclaim disk (a DELETE returns space to the free-space
-# map, not the OS) — run it for row counts, never for bytes.
+# map, not the OS): run it for row counts, never for bytes.
 #
 #   bash scripts/estate-maintain.sh [--dry-run] <evidence-dir> [--stale <hours>]
 #
 # Steps, each recorded in <evidence-dir>/estate-maintain.log:
 #   1. Reap orphaned connections whose owning OS process is gone.
-#   2. <REAPER_COMMAND> — the default keep rules only.
+#   2. <REAPER_COMMAND>: the default keep rules only.
 #   3. --stale <hours>: additionally reap test fixtures BELOW the reaper's floor
 #      whose age exceeds the cutoff. Destructive; a shorter cutoff is a person's
 #      call at the time, never a standing default.
@@ -80,7 +80,7 @@ say "BEFORE $before"
 # A killed test run does NOT end its database work: the server notices a dead
 # client only when it next writes to the socket, and a statement waiting on a
 # lock never does. Reap by the application_name every connection carries, and
-# LEAVE ALONE any whose OS process is still alive — that is a live run.
+# LEAVE ALONE any whose OS process is still alive: that is a live run.
 say "-- 1. orphaned connections --"
 reaped=0; left=0
 connections=$($Q -c "<ORPHAN_CENSUS_SQL>" 2>&1) || orphan_rc=1
@@ -88,11 +88,11 @@ while IFS='|' read -r conn app state age; do
   case "${conn:-}" in ''|*[!0-9]*) continue ;; esac
   ospid="${app#<APP_NAME_PREFIX>}"
   if [ -n "$ospid" ] && [ "$ospid" != "$app" ] && kill -0 "$ospid" 2>/dev/null; then
-    say "   LEFT   $app ($state, age $age) — OS process $ospid alive"
+    say "   LEFT   $app ($state, age $age): OS process $ospid alive"
     left=$((left + 1))
   else
     if result=$(q "<TERMINATE_SQL_FOR_CONN>"); then
-      say "   REAPED $app ($state, age $age) — $result"
+      say "   REAPED $app ($state, age $age): $result"
       reaped=$((reaped + 1))
     else
       orphan_rc=1; say "   FAILED to reap $app: $result"
@@ -154,7 +154,7 @@ say "== done $(date -u +%FT%TZ) · reap=$reap_rc stale=$stale_rc analyze=$an_rc 
 # ---------------------------------------------------------------------------
 # THE FLOOR, AND WHY IT MUST BE REPORTED RATHER THAN FORCED.
 #
-# Some rows a constraint will refuse to delete — an append-only ledger, an audit
+# Some rows a constraint will refuse to delete: an append-only ledger, an audit
 # chain, a foreign key with no cascade. Measured on one build: 18,550 tenants
 # survived the largest prune for exactly that reason, and that residue IS the
 # estate's resting size.

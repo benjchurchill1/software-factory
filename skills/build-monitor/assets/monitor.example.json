@@ -1,11 +1,11 @@
 {
   "project": "<PROJECT> v1",
   "owner_name": "<OWNER>",
-  "repo": "<ABSOLUTE PATH TO REPO>",
+  "repo": "<REPO_ABSOLUTE_PATH>",
   "trunk": "<TRUNK_BRANCH>",
   "remote": "origin",
   "scoreboard": {
-    "path": "<PATH TO PROGRESS FILE>",
+    "path": "<PROGRESS_FILE_PATH>",
     "row_prefix": "| ",
     "id_regex": "^[A-Z]+-[A-Z]+-\\d+",
     "verdict_column": 3,

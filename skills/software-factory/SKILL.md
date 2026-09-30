@@ -1,6 +1,6 @@
 ---
 name: software-factory
-description: Prime a project to run an autonomous build unattended, end to end — quality-test the register/PRD and the definition of done first, then the rig's memory budget, standing permissions, a ruling policy, the test-data lifecycle, lane provisioning, per-lane databases, generated state and a guarded deploy — then invoke build-loop to write the loop prompt itself. Use when someone is about to start an autonomous or unattended build, wants a "software factory" set up, wants a new project primed for a wave-based build agent, wants acceptance criteria or a definition of done reviewed for falsifiability and reachability before an agent builds against them, or when a running loop keeps stalling on the machine, on permissions, on questions queued for a person, or on state a human maintains by hand.
+description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, then close eleven gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats), then hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for writing or editing the loop prompt itself (build-loop) or for watching a build in progress (build-monitor).
 ---
 
 # Software factory
@@ -46,7 +46,7 @@ per service. Gate 9 is waived when there is genuinely no deploy target.
 
 ### 0. Review the oracle before anything else
 
-**[references/oracle-review.md](references/oracle-review.md)** — seven tests
+**[references/oracle-review.md](references/oracle-review.md)**: seven tests
 over every requirement row, five over the definition of done.
 
 This is the cheapest hour in the build and the most expensive to skip. A loop
@@ -57,7 +57,7 @@ because no row said "through the interface".
 
 The loop may not edit a requirement row, so every defect left here costs an
 escalation, a ruling and a wave later. Repairs are made now, by the product
-owner. Two of the seven tests — achievable evidence, and coverage — can only be
+owner. Two of the seven tests (achievable evidence, and coverage) can only be
 answered by them; do not rule on those.
 
 **Exit condition:** the review file exists, the register is frozen, and the
@@ -74,10 +74,10 @@ Do not ask what the machine is. Measure it, and say the numbers back.
 
 Four findings decide gate 1, and `assets/the-rig.template.md` has a slot for
 each. **Total memory** against what one full check needs at its peak. **The
-container runtime's allowance** — it competes with the check rather than
+container runtime's allowance**: it competes with the check rather than
 helping it, so it wants the smallest figure the database is happy with. **What
 else is resident**, including desktop applications. **How many agent seats and
-app servers are up at once** — the build's own barrier record names concurrent
+app servers are up at once**: the build's own barrier record names concurrent
 agent sessions and an orphaned app server as the largest single costs, not the
 desktop.
 
@@ -88,10 +88,11 @@ do-not-run list, or said when they will.
 
 **The host must not sleep.** A sleeping host pauses timers and kills in-flight
 agent requests; they die as "[Request interrupted]", which reads like a
-person's interruption. The rig doc's §Host sleep has the check; the source
+person's interruption. The rig doc's §Host sleep has the check for macOS, Linux
+and Windows; the source
 build lost five build agents in a row to it at wave 109.
 
-### 2. Install standing authority — a human action
+### 2. Install standing authority: a human action
 
 **This step is the user's, not the agent's.** The build this skill is drawn from
 measured the write of the permission file refused at every autonomous seat, and
@@ -102,8 +103,8 @@ here, and do not treat a foreground success as proof of anything.
 Do this instead, from
 **[references/standing-authority.md](references/standing-authority.md)** Part 1:
 
-1. Fill `assets/settings.allowlist.template.json` — named scripts only, never
-   bare `docker`, `psql`, `sh` or `git reset` — and write it to a path the user
+1. Fill `assets/settings.allowlist.template.json` (named scripts only, never
+   bare `docker`, `psql`, `sh` or `git reset`) and write it to a path the user
    can paste from.
 2. Tell the user exactly where it goes and that it is per-machine.
 3. **Exit condition:** the user confirms it is in place, **and** step 8's
@@ -112,7 +113,7 @@ Do this instead, from
 Two more standing instructions are settled here, in the user's words in the
 transcript, not on the allowlist (Part 1, *Push after green*): **push after
 every green barrier**, bounded to fast-forward on the trunk only, and **which
-branch the platform deploys from** — that branch is never the trunk and never
+branch the platform deploys from**: that branch is never the trunk and never
 pushed by the loop. The source build's trunk was a named wave branch while `main`
 auto-deployed; say which is which on day one.
 
@@ -128,87 +129,48 @@ the file.
 
 ### 4. Design the test-data lifecycle
 
-Ask one question: **what does a test leave behind, and who removes it?**
+Ask one question: **what does a test leave behind, and who removes it?** If the
+answer is "nothing, tests clean up", verify it on the largest suite.
 
-If "nothing, tests clean up", verify it on the largest suite. Otherwise: every
-population a test mints is **declared**; anything undeclared is **reaped by
-age** at the barrier; and the reaper's floor — rows a constraint will refuse to
-delete — is reported, never forced.
+Otherwise, teardown is the spec's from wave 1: every spec removes what it
+creates, found by a marker the spec itself writes. An age-based reaper and a
+residue census are backstops for a spec that died mid-run, not the mechanism.
+**[references/harness-gates.md](references/harness-gates.md)** §Gate 4 has the
+rules and the evidence behind them.
 
-**Teardown is the spec's, from wave 1.** Every spec removes what it creates,
-found by a **positive marker the spec itself writes** — a reference prefix, a
-fixture seat, a note token — never by inference from what looks like test
-data. Where records are audited, it closes them through the product's own
-paths, as a user would. The age-based reaper and any barrier precondition are
-backstops for a spec that died mid-run, not the mechanism. Residue was the most
-frequent red cause across the source build's waves 101 to 113, and each time
-it was data a spec had made on the shared practice and left.
+Fill `assets/estate-maintain.template.sh` to that file's contract, including
+orphan reaps for both stranded database connections and stranded app servers.
 
-Fill `assets/estate-maintain.template.sh`, including its orphan reaps for
-**both** stranded database connections **and** stranded app servers.
-
-**Exit condition:** the script's dry run plans and drops nothing; its evidence
-log path is declared and its nearest existing parent is verified writable
-without creating files.
-The dry run creates no evidence directory or log and executes no database,
-process or analysis command. Create the evidence path only on a real run.
-A **residue census** — a count, per minted population, of rows no live run
-owns — is measured every barrier and ratcheted like any other gate.
+**Exit condition:** the script's dry run plans and drops nothing, creates
+nothing, and names its evidence path; the residue census is on the gate list.
 
 ### 5. Provision lanes from one script
 
-Two conventions in the source build — prove your base, take your migration
-range from the brief — were both written down, both read, and both recurred:
-119 of 188 worktrees cut at a commit from a different project; four of eleven
-lanes choosing the same migration number. The ruling was that a lane does not
-cut its own worktree or choose its own number: **the orchestrator provisions
-both in one step, with a script**, because the instant a lane comes into
-existence is the only instant at which both facts are known and cheap.
+A lane never cuts its own worktree or chooses its own identifier range. The
+orchestrator does both in one step with `scripts/lane-cut.sh`, because that
+instant is the only one at which both facts are known and cheap. On the source
+build, the written conventions for both were read and still broken in most
+lanes. Never let a generic tool infer the base: the Workflow tool's
+`isolation: 'worktree'` cuts from `main`, which may not be the trunk.
 
-Fill `assets/lane-cut.template.sh`: cut from the trunk's current tip, link
-dependencies, run the base proof (the tip is an ancestor of the new tree; the
-expected directories exist; the typecheck and the test harness both load),
-allocate the lane's identifier range, write the range ledger. The trunk and wave
-come from a conf file the orchestrator moves, never from the script's source.
+Fill `assets/lane-cut.template.sh` and `assets/pre-barrier.template.sh` to
+their contracts in **[references/harness-gates.md](references/harness-gates.md)**
+§Gate 5. Lane-cut runs a base proof, including one test from a path with a
+space; pre-barrier is the one command after the serial merge that checks
+ancestry, stray artefacts and the suites lanes cannot run.
 
-Never let a generic tool infer the base. The Workflow tool's
-`isolation: 'worktree'` cuts from `main`; on the source build the trunk was not
-`main`, and reaching past the script for it was E-14's fourth recurrence.
-
-The base proof also runs **one path-sensitive test from a path containing a
-space**, once at this gate, unless the repo path is guaranteed free of them. The
-source build's wave 112 lane was green in its worktree and red in the main
-checkout, whose path held spaces: `URL.pathname` keeps `%20`, so use
-`fileURLToPath`.
-
-`assets/pre-barrier.template.sh` is this gate's other half: after the serial
-merge, one command asserts every lane branch is an ancestor of the integration
-branch, scans each lane's diff for `trace.zip`, `*.har` and `.env*`, and runs
-the typecheck, the registry duplicate check and the suites lanes cannot run,
-one PASS or FAIL line each. Its header says what fills each slot; the trunk,
-integration branch and lane glob come from `lane-cut.conf`, as lane-cut's do.
-
-**Exit condition:** `lane-cut.sh --dry-run <name>` prints every command it would
-run; `status` lists no lanes; `pre-barrier.sh --dry-run` prints its checks.
-Use `[a-z][a-z0-9_]{0,47}` in both lane scripts, reserving `status`;
-reject invalid input instead of normalizing it. The trunk owner provisions
-serially and uses unique names across active waves, retiring old databases
-before reuse. Dry run must not create proof logs or invoke range allocators.
+**Exit condition:** `lane-cut.sh --dry-run <n>` prints every command it would
+run and creates nothing; `status` lists no lanes; `pre-barrier.sh --dry-run`
+prints its checks.
 
 ### 6. Give lanes their own database
 
-If parallel builders exist and integration tests need a shared service, they
-otherwise first execute at the barrier, and the first barrier attempt is red
-almost every wave. `assets/lane-db.template.sh` stands up a second container,
-replays the schema into a template once, and clones per lane in about a second.
-It runs each lane's command in its own process group and records it, so `stop`
-ends exactly that tree and a second run on a live lane is refused; that guard
-exists because a `pkill -f` once left an orphaned test process running against
-a database its lane had dropped and re-cloned.
-
-Two classes of test cannot move there and must be named in the conventions doc:
-those that talk to the shared service over HTTP, and those that build an
-expensive fixture.
+If parallel builders exist and integration tests need a shared service, give
+each lane its own clone, or those tests first run at the barrier and the first
+attempt goes red almost every wave. Fill `assets/lane-db.template.sh` to its
+contract in **[references/harness-gates.md](references/harness-gates.md)**
+§Gate 6, and name in the conventions doc the two classes of test that stay at
+the barrier.
 
 **Exit condition:** `up` reports the replay time and a conformant template;
 `clone`, one small test, and `drop` all succeed; the shared service is
@@ -221,21 +183,22 @@ Gates **7**, **8** and **10** are in
 the failure behind each and the test to apply. In short: read each done
 condition aloud and name the wave-loop step that makes it fall; list the files
 the loop reads to derive state and give each a regeneration path, and cap the
-record so it stops growing faster than the product; and name every seat —
-the owner, the build seat that owns the trunk, and the monitor seat that runs
-`build-monitor` beside it — with what each owns, writes and never does.
+record so it stops growing faster than the product; and name every seat
+(the owner, the build seat that owns the trunk, and the monitor seat that runs
+`build-monitor` beside it), with what each owns, writes and never does.
 
 For **9**, `assets/deploy-env.template.sh` is one script that refuses the wrong
 target, verifies the served artefact rather than trusting the platform's
 success line, and lives somewhere a reboot does not clear. Deploy is never on
 the allowlist.
 
-**Required operational artifact:** follow
-[references/recovery.md](references/recovery.md) and write a durable readiness
-record naming budget limits/usage source, journal/checkpoint paths, crash-drill
-evidence, known-good release, rollback and restore evidence or explicit service
-waivers. Gate 9 stays blocked until target-specific recovery steps are
-instantiated and rehearsed; mock fixtures do not close platform readiness.
+**Recovery and budgets.** Write the readiness record described in
+**[references/recovery.md](references/recovery.md)**: where the journal and
+checkpoint live, the spend and time limits and where usage is read from, and
+for gate 9 the known-good release, rollback and restore steps. That file says
+which parts a script enforces and which are rules the loop is asked to follow.
+Gate 9 can close with deploy **waived** for a local-only build; it cannot close
+as **met** until rollback and restore have been rehearsed on the real target.
 
 **Then invoke `build-loop`. Not optional.** A primed factory with no loop is
 half a delivery. It writes the loop prompt, the conventions doc, the status
@@ -244,15 +207,15 @@ does not re-ask, in the terms its slot table uses:
 
 | Factory gate | `build-loop` slot |
 | --- | --- |
-| 1 — the rig | `<TIMEOUT_FACTS>`, `<DO_NOT_RUN>` (do-not-run list, seat cap, pre-launch check) |
-| 2 — allowlist; push after green | `<ALLOWLIST_PATH>`, `<PUSH_RULE>` |
-| 3 — ruling policy | `<RULING_POLICY_PATH>` (the ladder's autonomous terminal) |
-| 4 — maintenance | `<MAINTENANCE_COMMAND>` (a barrier build step, before the check) |
-| 5 — lane provisioning; pre-barrier checks | `<LANE_CUT_COMMAND>`, `<EVIDENCE_DIR>`, `<PRE_BARRIER_COMMAND>` |
-| 6 — lane databases | `<SINGLETON>`, `<LANE_DB_COMMAND>`, `<SHARED_RESOURCE_SUITES>` (the two classes that stay at the barrier) |
-| 8 — generated state | `<REGENERATED_FILES>`, `<RECORD_CAPS>` |
-| 9 — deploy | `<DEPLOY_SCOPE>` (the guarded script and its confirmation rule), `<DEPLOY_BRANCH>` |
-| 10 — seats | `<OWNER>`, `<TRUNK_OWNER>` (the monitor seat is `build-monitor`, not a slot) |
+| 1: the rig | `<TIMEOUT_FACTS>`, `<DO_NOT_RUN>` (do-not-run list, seat cap, pre-launch check) |
+| 2: allowlist; push after green | `<ALLOWLIST_PATH>`, `<PUSH_RULE>` |
+| 3: ruling policy | `<RULING_POLICY_PATH>` (the ladder's autonomous terminal) |
+| 4: maintenance | `<MAINTENANCE_COMMAND>` (a barrier build step, before the check) |
+| 5: lane provisioning; pre-barrier checks | `<LANE_CUT_COMMAND>`, `<EVIDENCE_DIR>`, `<PRE_BARRIER_COMMAND>` |
+| 6: lane databases | `<SINGLETON>`, `<LANE_DB_COMMAND>`, `<SHARED_RESOURCE_SUITES>` (the two classes that stay at the barrier) |
+| 8: generated state | `<REGENERATED_FILES>`, `<RECORD_CAPS>` |
+| 9: deploy | `<DEPLOY_SCOPE>` (the guarded script and its confirmation rule), `<DEPLOY_BRANCH>` |
+| 10: seats | `<OWNER>`, `<TRUNK_OWNER>` (the monitor seat is `build-monitor`, not a slot) |
 | budgets and recovery | `<RUN_STATE_DIR>`, `<SPEND_LIMIT>`, `<WAVE_SPEND_LIMIT>`, `<TIME_LIMIT_MINUTES>`, `<WAVE_TIME_LIMIT_MINUTES>`, `<HANDOFF_RESERVE>` |
 
 Let it interview for what the factory did not settle: the oracle's path, the
@@ -269,18 +232,19 @@ Do not hand over an unprimed factory or an unrun loop.
 - `pre-barrier.sh --dry-run`: prints every check, runs none.
 - `lane-db.sh up`, `clone`, one small test, `drop`: report the replay time.
 - The deploy script with its guard tripped: refuses.
-- Run `python3 <this skill's base directory>/scripts/verify-factory.py`: rendered shell fixtures must pass. Repeat against project-filled
-  commands in isolation before claiming project readiness.
-- Execute and record the crash drills in `references/recovery.md` with a
-  separate verifier; check budgets survive restart and unknown operations stop.
-  Name any unexecuted platform rollback/restore drill as blocked, not passed.
+- `python3 <this skill's base directory>/scripts/verify-factory.py` passes.
+  It tests the templates, not your filled copies: run each filled script's
+  dry run as well.
+- The crash drills in `references/recovery.md` have been run in a disposable
+  fixture and recorded. Any drill not run is reported as **blocked**, not
+  passed.
 - **The allowlist, from a background seat.** Spawn a subagent or a
   `run_in_background` command that runs one allowlisted script with its dry-run
   flag, and quote its result verbatim. A foreground run proves nothing; the
   source build measured the same command permitted foreground and refused
   background.
 
-**The loop** — `build-loop`'s own checks, repeated because they are the half a
+**The loop**: `build-loop`'s own checks, repeated because they are the half a
 person runs first:
 
 - The status readout executes and prints.
@@ -290,13 +254,13 @@ person runs first:
   over everything written. Every slot in this skill's assets is that shape.
 
 Then report each of the eleven gates as **met**, **waived with a reason**, or
-**blocked on the user**, and state how to start the loop, how to watch it —
-start the monitor seat with `build-monitor` in a second session, beside
-`loop-status.sh` — and what it will produce when it finishes.
+**blocked on the user**, and state how to start the loop, how to watch it
+(start the monitor seat with `build-monitor` in a second session, beside
+`loop-status.sh`), and what it will produce when it finishes.
 
 ## Priming an existing build
 
-Do not regenerate anything. Run gate 0 against the register as it stands — a
+Do not regenerate anything. Run gate 0 against the register as it stands: a
 build in flight has usually found several of its defects the expensive way and
 is still carrying the rest. Then measure the rig, read the loop's own barrier
 records for what has stalled it, and propose the missing gates as a diff. The
