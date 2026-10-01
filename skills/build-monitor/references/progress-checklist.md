@@ -4,8 +4,19 @@
 page. It reads files and runs read-only `git`; it never writes into the repo.
 It uses the standard library only.
 
-    python3 scripts/progress.py --config monitor.json          # writes `out`
-    python3 scripts/progress.py --config monitor.json --json   # data only
+    python3 scripts/progress.py --config monitor.json                  # writes `out`
+    python3 scripts/progress.py --config monitor.json --view kanban    # the board
+    python3 scripts/progress.py --config monitor.json --json           # data only
+
+It writes one of two views of the same data. `view` in the config picks it;
+`--view` overrides that for one run.
+
+- **`checklist`** (the default when `view` is absent): road to done, the
+  current wave lane by lane, the next queue, what waits on the owner, where
+  the time went, and history.
+- **`kanban`**: every register row as a card on a six-column board, with the
+  run's spend, clock, wave count and projection above it. Owners who want to
+  see the whole register at a glance usually prefer this one.
 
 ## Config fields
 
@@ -38,6 +49,19 @@ Paths are relative to `repo` unless absolute. `owner_list`, `out` and
 | `wave.merge_subject_regex`, `approval_regex` | How a merge commit names the lane, and how it records the monitor's approval |
 | `history.verification_regex`, `max` | Wave and attempt from a verification filename; how many waves to chart |
 | `history.record_regex` | How the trunk's record commit names a wave (`{N}`); marks the current wave recorded |
+| `view` | `checklist` or `kanban` |
+| `board.columns` | Extra scoreboard columns (1-based) the cards show: `title`, `tag`, `wave`, `note`; 0 or absent means none |
+| `board.areas` | Row-id prefix to module name, in the order the module filter lists them. Unlisted prefixes show as themselves |
+| `board.area_regex` | How a row id gives its module; default everything before the last `-<number>` |
+| `board.done_verdicts` | Verdicts that put a card in Done; default `PASS` only |
+| `board.rework_prefixes` | Verdict prefixes that put a card in Rework (a note saying "stuck" does too) |
+| `board.parked_tags`, `parked_label`, `parked_hint` | Tags (from the `tag` column) that park a row, and what the column is called. Other terminal verdicts are parked too |
+| `board.carry_branch` | The branch a refuted lane is carried on, `{N}` and `{lane}`; marks those lanes and cards |
+| `run.checkpoint` | The build seat's `checkpoint.json`. Optional: without it, the board has no run figures |
+| `run.keys` | Dotted paths into the checkpoint when it differs from the defaults: `spent` `budget.spent`, `limit` `budget.total_limit`, `unit` `budget.unit`, `started_at` `budget.started_at`, `deadline` `budget.deadline`, `wave` `budget.wave.id`, `wave_spent` `budget.wave.spent`, `wave_started_at` `budget.wave.started_at`, `phase` `wave_phase` |
+| `run.recorded_phase` | The phase value that marks a wave recorded; default `recorded` |
+| `run.no_time_limit`, `limit_override` | The owner's later word when the checkpoint has not caught up: no end time, or a raised cap. Remove once the checkpoint says the same |
+| `status_file` | Optional `{"text": "<checklist>", "at": "<ISO time>"}` holding the build seat's latest status checklist (a header line, then `✓`, `✱` or `○` steps), relative to the config. The board shows it and judges health by its age |
 | `timing.journal` | The build seat's `journal.jsonl`. Optional: without it, the page has no "Where the time went" section |
 | `timing.max` | How many waves to show there; defaults to `history.max` |
 
@@ -49,6 +73,10 @@ Paths are relative to `repo` unless absolute. `owner_list`, `out` and
 | Wave | Lane ledger; `build_marker`; panel records per stage; merge commits on `trunk..integration`; barrier launch files; `trunk` against `remote/trunk` |
 | Next queue | The queue file's bullets |
 | Waiting on the owner | `owner-list.md` |
+| Board columns | First match wins: Done (a `done_verdicts` verdict); This wave (named in the current wave's queue, which was drafted in the previous wave's evidence directory); Next wave (named in the next queue); Rework (a `rework_prefixes` verdict or "stuck"); Parked (another terminal verdict or a `parked_tags` tag); Backlog |
+| Queue rows | Row ids in the queue file, by lane: a `\| lane \| rows \|` table, or `**lane**` entries with ids in their text. "SES-05, 06", "SES-05 and 06" and "TRI-01..04" expand; only ids on the scoreboard count |
+| The run | The checkpoint now, plus its own git history when it is committed: each commit that leaves a wave at `recorded_phase` gives that wave's spend, start, the record time and PASS then. Without that history, the journal's `usage` events give spend per wave. Projection is where the current pace ends when the budget or the clock (whichever is first) runs out; "to finish all" is the waves, spend and days the remaining rows take at that pace |
+| Health | The status file's age (quiet after 90 minutes), every step ticked (paused between waves), or a red last barrier |
 | History | The add commit of each wave's highest-numbered verification file gives the date and attempt count, and the scoreboard at that commit gives PASS |
 
 "Pushed" compares against the local remote-tracking ref, so it is as fresh as

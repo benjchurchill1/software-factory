@@ -48,6 +48,10 @@
     "should_trigger": true
   },
   {
+    "query": "can I see the build's progress as a kanban board, with how many tokens it's used and how many waves so far?",
+    "should_trigger": true
+  },
+  {
     "query": "lane w23/reports just handed back, can you review it before the build seat merges? screenshots please",
     "should_trigger": true
   },

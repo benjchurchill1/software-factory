@@ -1,6 +1,6 @@
 ---
 name: build-monitor
-description: Run the monitor seat for an autonomous wave-based build that is already running: a second Claude session beside the build seat that reviews every lane before merge (screenshots at phone and desktop width for UI lanes), rules within the owner's delegation, shapes the next wave's queue, runs staging checks, keeps the owner's to-do list short, watches liveness, and publishes a generated progress checklist after each wave. Use when someone wants a build monitor, a reviewing seat or second pair of eyes on an unattended build, a progress page for a build loop, or asks "where is the build", "what's left" or "what's waiting on me" during a software-factory or build-loop build. Not for setting a build up (software-factory) or writing its prompt (build-loop).
+description: Run the monitor seat for an autonomous wave-based build that is already running: a second Claude session beside the build seat that reviews every lane before merge (screenshots at phone and desktop width for UI lanes), rules within the owner's delegation, shapes the next wave's queue, runs staging checks, keeps the owner's to-do list short, watches liveness, and publishes a generated progress page (a Kanban board of the register with the run's spend and pace, or a checklist) after each wave. Use when someone wants a build monitor, a reviewing seat or second pair of eyes on an unattended build, a progress page or Kanban board for a build loop, or asks "where is the build", "what's left" or "what's waiting on me" during a software-factory or build-loop build. Not for setting a build up (software-factory) or writing its prompt (build-loop).
 ---
 
 # Build monitor
@@ -58,7 +58,8 @@ These outrank everything else here.
    the checkout): copy `assets/monitor.example.json` to
    `<project folder>/build-monitor/monitor.json` and fill it from the repo.
    Every field is a path or a pattern the build already writes; see
-   `references/progress-checklist.md`.
+   `references/progress-checklist.md`. The example sets `"view": "kanban"`;
+   use `"checklist"` if the owner prefers the lane-by-lane page.
 3. Seed `owner-list.md` from `assets/owner-list.template.md` with whatever is
    already waiting on the owner.
 4. Generate and publish the page (below). If it went out through the
@@ -142,9 +143,14 @@ falsifiers that only staging can answer (HTTP, hosted auth). Commit the probe
 as evidence by handing it to the build seat. Credentials come from the
 environment and never go in a file.
 
-### Publish the progress checklist
+### Publish the progress page
 
     python3 <this skill's base directory>/scripts/progress.py --config <project folder>/build-monitor/monitor.json
+
+Add `--view kanban` or `--view checklist` to write the other view once.
+Where the build seat keeps a status checklist you can read, save its latest
+text and time to `status_file` before generating, so the board shows the step
+in hand.
 
 Then republish the page, after every wave record and after any change to the
 owner's list. The script is read-only against the repo and safe during a
@@ -158,7 +164,24 @@ barrier.
   `python3 -m http.server --bind 127.0.0.1` for a browser on the same machine.
   Leave `artifact_url` empty and tell the owner the file path once.
 
-The page shows:
+The kanban view shows:
+- **Health, wave and the step in hand**, and the last push to the trunk.
+- **The run**: spent against the cap, time elapsed against the deadline (or
+  "runs until finished"), waves recorded, spend and rows per wave, where the
+  current pace ends when the budget or clock runs out, and what finishing every
+  row would take. A per-wave table gives start, duration, spend and new rows
+  done. Spend is in the checkpoint's unit; tokens carry no money figure.
+- **Lanes in the wave**, with refuted lanes that were carried, and **what
+  waits on the owner**.
+- **By module**: done per module; picking one filters the board.
+- **The board**: Backlog, Next wave, This wave, Rework, Parked, Done. Only
+  `done_verdicts` (PASS by default) reach Done.
+
+When the owner changes a cap or the deadline and the checkpoint has not caught
+up, record their word in `run.limit_override` or `run.no_time_limit`, then
+remove it once the checkpoint agrees.
+
+The checklist view shows:
 - **Road to done**: each done condition with its live count.
 - **The current wave**: lane by lane (cut, built, review stages with verdicts,
   approved, merged), barrier attempts, recorded, pushed.
