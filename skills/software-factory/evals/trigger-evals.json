@@ -82,5 +82,25 @@
   {
     "query": "write a PRD for a patient recall feature, we haven't started building yet",
     "should_trigger": false
+  },
+  {
+    "query": "before I start the build session can you check everything's set up? tokens, the hosted database, netlify, the lot. I don't want it stopping halfway like last time",
+    "should_trigger": false
+  },
+  {
+    "query": "the build just told me only 3 of 26 migrations made it to the hosted supabase db and nobody can log in. how do we make sure that never happens on the next project?",
+    "should_trigger": false
+  },
+  {
+    "query": "what secrets and env vars does the cloud environment need for this build to deploy and run migrations by itself?",
+    "should_trigger": false
+  },
+  {
+    "query": "the deploy step can't find NETLIFY_AUTH_TOKEN but I'm sure I added it to the environment",
+    "should_trigger": false
+  },
+  {
+    "query": "I keep approving the budget in other threads and the build seat ignores it. can we get all the standing decisions sorted before kick-off?",
+    "should_trigger": false
   }
 ]

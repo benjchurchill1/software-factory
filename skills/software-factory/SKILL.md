@@ -1,6 +1,6 @@
 ---
 name: software-factory
-description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, then close thirteen gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter), then hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for writing or editing the loop prompt itself (build-loop) or for watching a build in progress (build-monitor).
+description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, then close thirteen gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter), then run environment-check and hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for missing secrets, blocked hosts, hosted migrations or logins (environment-check), writing or editing the loop prompt itself (build-loop), or watching a build in progress (build-monitor).
 ---
 
 # Software factory
@@ -16,7 +16,8 @@ records what each gate cost when it was missing, measured on one real build and
 cited to its artefacts; read it when a user wants to skip one.
 
 `build-loop` writes the loop prompt, the conventions doc, the status readout and
-the scoreboard. This runs first and invokes it at step 8.
+the scoreboard. This runs first and invokes `environment-check`, then
+`build-loop`, at step 8.
 
 ## The thirteen gates
 
@@ -239,6 +240,16 @@ which parts a script enforces and which are rules the loop is asked to follow.
 Gate 9 can close with deploy **waived** for a local-only build; it cannot close
 as **met** until rollback and restore have been rehearsed on the real target.
 
+**Then run `environment-check`. Not optional.** Gates 1 to 12 prime the
+machine and the repo; they do not prove the outside world is ready. The
+environment check lists every secret, CLI, host, hosted migration path, login
+and standing decision the build needs, sends the owner one list of what is
+missing, and passes only from the session the build will run in. On the source
+build for that skill, 23 of 26 migrations never reached the hosted database
+because the cloud environment had no database token, and three approvals were
+refused by the build seat because they were relayed. Do not start the loop on
+a BLOCKED report.
+
 **Then invoke `build-loop`. Not optional.** A primed factory with no loop is
 half a delivery. It writes the loop prompt, the conventions doc, the status
 readout and the scoreboard. Hand it what the factory settled so its interview
@@ -256,6 +267,7 @@ does not re-ask, in the terms its slot table uses:
 | 9: deploy | `<DEPLOY_SCOPE>` (the guarded script and its confirmation rule), `<DEPLOY_BRANCH>` |
 | 10: seats | `<OWNER>`, `<TRUNK_OWNER>` (the monitor seat is `build-monitor`, not a slot) |
 | 11: pre-flight | `<PREFLIGHT_COMMAND>`, `<RESUME_MECHANISM>` |
+| the environment check | `<ENV_CHECK_COMMAND>`, `<STANDING_DECISIONS_PATH>`, and its lane count as the wave's width |
 | 12: the ratchet | `<CHECKS_LEDGER>`, `<NEVER_TOGETHER_PATH>`, `<SUPERSESSIONS_PATH>`, `<CLEAN_ROUNDS>` |
 | budgets and recovery | `<RUN_STATE_DIR>`, `<SPEND_LIMIT>`, `<WAVE_SPEND_LIMIT>`, `<TIME_LIMIT_MINUTES>`, `<WAVE_TIME_LIMIT_MINUTES>`, `<HANDOFF_RESERVE>` |
 
@@ -276,6 +288,8 @@ Do not hand over an unprimed factory or an unrun loop.
   one, in a scratch branch.
 - `lane-db.sh up`, `clone`, one small test, `drop`: report the replay time.
 - The deploy script with its guard tripped: refuses.
+- `scripts/env-check.py` exits 0 from the build's own session, and its report
+  is committed.
 - `python3 <this skill's base directory>/scripts/verify-factory.py` passes.
   It tests the templates, not your filled copies: run each filled script's
   dry run as well.

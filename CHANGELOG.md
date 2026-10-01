@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+- **New skill: `environment-check`.** Before the build seat starts, it lists everything the build needs from outside the repo in `docs/build/environment.json` (secrets by exact name, CLIs, hosts, probes that prove each token against its real target, the hosted database's migration path, logins, machine size) and the owner's standing word in `docs/build/standing-decisions.md`. `scripts/env-check.py` (standard library) checks them from the session the build will run in and writes a READY or BLOCKED report whose failing lines are one list of owner actions. Exit 0 ready, 1 blocked, 2 manifest unreadable or unfilled; `--dry-run` prints the checks and runs none.
+- It catches what the Keystone build found mid-build: a database token missing from the cloud environment, so 23 of 26 migrations never reached the hosted database; a deploy script that did not apply migrations; a token saved as `NETLIFY_AUT_TOKEN` (a set variable that nearly matches a missing one is reported as a misspelling, with the rename); logins only the owner can create; five planned lanes on a 4-core machine that lost its worker three times (lanes at two cores and 3 GB each, review lenses one after another under eight cores); and budget and deploy approvals the build seat refused because they were relayed.
+- Secret values are never printed or written; any that appears in a probe's output is redacted.
+- `software-factory` runs it at step 8, before `build-loop`, and verifies it at step 9. The loop prompt runs `<ENV_CHECK_COMMAND>` before wave zero and on every resume, takes its lane count as the ceiling, and stops with an `environment-blocked` handoff on failure. It reads `<STANDING_DECISIONS_PATH>` and takes a change only when the owner types it in its own session.
+- Trigger evals now cover four skills; five task evals for the new skill.
+- Self-test: 51 tests (from 47).
+
 ## 0.4.0
 
 - **The Kanban board.** `progress.py` gains a second view of the same data, `--view kanban` (or `"view": "kanban"` in `monitor.json`, now the example's default). Every register row is a card in one of six columns: Backlog, Next wave, This wave, Rework, Parked, Done. Only `done_verdicts` (PASS by default) reach Done. Queue files are read as a lane table or as `**lane**` entries, with "SES-05, 06" and "TRI-01..04" expanded and only ids on the scoreboard counted. A module filter narrows the board; lanes carried after a refutation are marked.

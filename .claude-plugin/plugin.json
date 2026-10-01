@@ -1,7 +1,7 @@
 {
   "name": "software-factory",
-  "version": "0.4.0",
-  "description": "Run an autonomous, register-driven software build with Claude Code: prime the project (software-factory), generate the wave-based build loop (build-loop), and run a second monitor seat that reviews every lane and publishes a generated progress checklist (build-monitor).",
+  "version": "0.5.0",
+  "description": "Run an autonomous, register-driven software build with Claude Code: prime the project (software-factory), prove its outside world is ready before it starts (environment-check), generate the wave-based build loop (build-loop), and run a second monitor seat that reviews every lane and publishes a generated progress checklist (build-monitor).",
   "author": { "name": "Ben Churchill" },
   "repository": "https://github.com/benjchurchill1/software-factory",
   "license": "MIT",
