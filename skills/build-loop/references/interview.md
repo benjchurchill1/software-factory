@@ -143,6 +143,9 @@ nothing. Verification is a separate pass with fresh context, told to refute.
   money, data-integrity rows usually get three: correctness,
   permissions, isolation-and-concurrency)
 - What is the build order: which subsystems must exist before which?
+- How many clean panel rounds in a row, at the same lane commit, finish a lane?
+  Default two. Push back on one: a single panel's blind spot then decides.
+  More than three mostly adds time.
 
 ## 8. The record
 
@@ -171,6 +174,13 @@ Confirm or adjust the defaults:
   flag it stalled. Never idle-loop.
 - Shared resource down → one restart attempt, then write the handoff and stop.
   Do not fight the machine.
+
+- The login expires → stop cleanly before the step it would interrupt, with an
+  `auth-expiring` handoff. How long does a login last here, and can anything
+  report the time left? If nothing can, the owner records the login time.
+- A usage limit → pause until the window resets, then resume. What reports the
+  window, and what wakes the seat at the reset time (`/loop`'s next firing, a
+  scheduled resume of the session, or a line on the owner's list)?
 
 Also settle the durable run-state directory, total spend ceiling and accounting
 unit, elapsed-time ceiling, per-operation bounds and handoff reserve. Budgets
@@ -215,6 +225,8 @@ Which answer fills which template slot. Slots appear as `<NAME>` or
 | the record | `<PROGRESS_PATH>`, `<ASSESSMENT_PATH>`, `<HANDOFF_PATH>`, `<MEMORY_APPEND_RULE>`, `<VERDICT_PATTERN>` |
 | persistent accounting and recovery, total and per-wave ceilings | `<RUN_STATE_DIR>`, `<SPEND_LIMIT>`, `<WAVE_SPEND_LIMIT>`, `<TIME_LIMIT_MINUTES>`, `<WAVE_TIME_LIMIT_MINUTES>`, `<HANDOFF_RESERVE>` |
 | deploy and push policy; the branch the platform deploys from | `<DEPLOY_SCOPE>`, `<PUSH_RULE>`, `<DEPLOY_BRANCH>` |
+| clean rounds per lane | `<CLEAN_ROUNDS>` |
+| what wakes the seat after a usage pause | `<RESUME_MECHANISM>` |
 | **settled by `software-factory`, if it ran first**: do not re-ask | |
 | the rig doc: do-not-run list, seat cap, pre-launch swap check | `<DO_NOT_RUN>` |
 | the permission allowlist's path | `<ALLOWLIST_PATH>` |
@@ -222,6 +234,8 @@ Which answer fills which template slot. Slots appear as `<NAME>` or
 | the estate maintenance step, run at the barrier before the check | `<MAINTENANCE_COMMAND>` |
 | the lane provisioning script and its evidence root | `<LANE_CUT_COMMAND>`, `<EVIDENCE_DIR>` |
 | the pre-barrier check script | `<PRE_BARRIER_COMMAND>` |
+| the pre-flight script (login, usage, disk, reboots, config) | `<PREFLIGHT_COMMAND>` |
+| the ratchet: the checks ledger, the never-together ledger, the supersessions register | `<CHECKS_LEDGER>`, `<NEVER_TOGETHER_PATH>`, `<SUPERSESSIONS_PATH>` |
 | the lane database script and the two test classes that stay at the barrier | `<LANE_DB_COMMAND>`, `<SHARED_RESOURCE_SUITES>` |
 | the derived files and their regeneration paths; the record caps | `<REGENERATED_FILES>`, `<RECORD_CAPS>` |
 | the seats: the owner, and the trunk's owning seat | `<OWNER>`, `<TRUNK_OWNER>` |

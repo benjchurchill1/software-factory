@@ -14,7 +14,9 @@ re-learned the hard way are written down.
 | `<LANE_CUT_COMMAND>` | provision worktree, base proof and range ledger | orchestrator before dispatch |
 | `<LANE_DB_COMMAND>` | clone/exec/stop/drop isolated lane database | lane integration checks before returning |
 | <OTHER_COMMANDS> | | the orchestrator only |
-| `<PRE_BARRIER_COMMAND>` | after the serial merge: lane ancestry, no trace or credential artefacts, typecheck, registry duplicates, the suites lanes cannot run | the orchestrator, before every barrier attempt |
+| `<PRE_BARRIER_COMMAND>` | after the serial merge: lane ancestry, no trace or credential artefacts, the ratchet (no committed test edited, both ledgers append-only, <CLEAN_ROUNDS> clean panel rounds at each lane tip, the ledger's checks), typecheck, registry duplicates, the suites lanes cannot run | the orchestrator, before every barrier attempt |
+| `<PREFLIGHT_COMMAND>` | at wave open and before every barrier attempt: generated files free of slots, disk, reboot, login, usage and budget, the never-together ledger | the orchestrator; nothing launches on a non-zero exit |
+| `python3 scripts/guards.py checks <CHECKS_LEDGER>` | runs every active check with a script | each lane's panel, in the lane's worktree |
 
 ## Seats
 
@@ -115,6 +117,16 @@ takes, what it holds while it runs, and whether it is rebuilt every run. If a
 cleanup step deletes what the next run rebuilds, say so plainly: those two are
 paying for each other, and reuse-if-present is the fix.>
 
+## Checks, and the lessons they come from
+
+<CHECKS_LEDGER> holds a check for every refutation that stood: the failure
+class, the lens it belongs to, and, where it can be mechanical, a script under
+`scripts/checks/` that exits non-zero when the class recurs. A verifier reads
+the entries for its lens **before** it reads the builder's claim, and runs the
+scripts. <NEVER_TOGETHER_PATH> holds pairs of rows whose lanes collided at a
+barrier; they never share a wave. Both files are append-only; an entry is
+retired only by a line citing a ruling that names it.
+
 ## Contention is not refutation
 
 <TIMEOUT_FACTS: the default timeout, and the observed contention it must sit
@@ -129,10 +141,18 @@ that you did.
 
 ## Superseding a test, and who deletes the old one
 
-A committed test may not be edited. When one is genuinely wrong (it encodes the
+A committed test may not be edited, and neither may a committed check script
+under `scripts/checks/` or the ratchet's own scripts (the config's `frozen`
+list). `.claude/test-freeze.json` names which files are tests; the test-freeze hook refuses an edit to any of them that
+exists on <BRANCH>, and `<PRE_BARRIER_COMMAND>`'s `tests` line fails a merge
+that edits one anyway (a shell command gets past the hook, not past the
+barrier). A test a lane created itself is not frozen until it is merged. When one is genuinely wrong (it encodes the
 defect, or asserts as correct something a later wave refuted), write the
 successor, name the predecessor in its header with an assertion map, and record
-the predecessor for deletion by the orchestrator at the barrier.
+the predecessor for deletion by the orchestrator at the barrier: one line
+appended to <SUPERSESSIONS_PATH>,
+`{"predecessor": "<path>", "successor": "<path>", "why": "...", "wave": N}`.
+The register is append-only.
 
 Both files must not simply be left to run: two files asserting contradictory
 things about the same behaviour keep the barrier permanently red and hide the

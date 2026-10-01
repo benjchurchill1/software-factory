@@ -8,9 +8,18 @@
       "expected_output": "Pushes back: an oracle the loop can edit is not an oracle. Asks for a register the loop may never change, and a single command that means green. Does not emit a prompt until both are settled, or makes creating them wave zero's first job.",
       "files": [],
       "assertions": [
-        {"name": "challenges-oracle", "text": "States that tests written by the loop cannot be the oracle"},
-        {"name": "asks-for-register", "text": "Asks for something the loop may never edit"},
-        {"name": "challenges-green", "text": "Asks for a single green command, or makes it wave zero's first job"}
+        {
+          "name": "challenges-oracle",
+          "text": "States that tests written by the loop cannot be the oracle"
+        },
+        {
+          "name": "asks-for-register",
+          "text": "Asks for something the loop may never edit"
+        },
+        {
+          "name": "challenges-green",
+          "text": "Asks for a single green command, or makes it wave zero's first job"
+        }
       ]
     },
     {
@@ -20,9 +29,18 @@
       "expected_output": "Reads the existing prompt and proposes a diff rather than regenerating. Moves verdicts to a separate verify pass so builders never record their own PASS. Checks the other common gaps in order and reports which are present.",
       "files": [],
       "assertions": [
-        {"name": "diff-not-rewrite", "text": "Proposes changes as a diff to the existing prompt"},
-        {"name": "separate-verifier", "text": "Builders may no longer mark their own rows PASS"},
-        {"name": "checks-other-gaps", "text": "Reviews shared-resource law, contention-is-not-refutation, blocked list and stop conditions"}
+        {
+          "name": "diff-not-rewrite",
+          "text": "Proposes changes as a diff to the existing prompt"
+        },
+        {
+          "name": "separate-verifier",
+          "text": "Builders may no longer mark their own rows PASS"
+        },
+        {
+          "name": "checks-other-gaps",
+          "text": "Reviews shared-resource law, contention-is-not-refutation, blocked list and stop conditions"
+        }
       ]
     },
     {
@@ -32,8 +50,14 @@
       "expected_output": "Refuses an open-ended blocked list. Asks for a closed, enumerated list of dependencies that justify BLOCKED, and says why: an open list is how a loop stops working while looking busy.",
       "files": [],
       "assertions": [
-        {"name": "requires-closed-list", "text": "Requires the blocked list to be closed and enumerated"},
-        {"name": "explains-risk", "text": "Explains that an open list lets the loop stop working while appearing busy"}
+        {
+          "name": "requires-closed-list",
+          "text": "Requires the blocked list to be closed and enumerated"
+        },
+        {
+          "name": "explains-risk",
+          "text": "Explains that an open list lets the loop stop working while appearing busy"
+        }
       ]
     },
     {
@@ -43,11 +67,48 @@
       "expected_output": "Emits all four artefacts, seeds the scoreboard and a checkpoint with bootstrap_complete false, greps for unreplaced slots and reports none, runs loop-status.sh and the check command, and reports what was and was not verified.",
       "files": [],
       "assertions": [
-        {"name": "four-artefacts", "text": "Writes the loop prompt, conventions doc, status readout and scoreboard"},
-        {"name": "checkpoint-seeded", "text": "Seeds a checkpoint with bootstrap_complete: false"},
-        {"name": "slot-grep", "text": "Greps generated files for unreplaced <SLOT> placeholders"},
-        {"name": "reports-verification", "text": "Reports which checks were run and which were not"}
+        {
+          "name": "four-artefacts",
+          "text": "Writes the loop prompt, conventions doc, status readout and scoreboard"
+        },
+        {
+          "name": "checkpoint-seeded",
+          "text": "Seeds a checkpoint with bootstrap_complete: false"
+        },
+        {
+          "name": "slot-grep",
+          "text": "Greps generated files for unreplaced <SLOT> placeholders"
+        },
+        {
+          "name": "reports-verification",
+          "text": "Reports which checks were run and which were not"
+        }
       ]
+    },
+    {
+      "name": "refutation-becomes-check",
+      "prompt": "The permissions lens just refuted lane w14/invoices: the list endpoint returned another tenant's invoices. The builder fixed it in stage 2 and the panel is clean now. Anything else before we merge?",
+      "expected_output": "Does not merge on one clean round: asks for the loop's clean rounds in a row at the lane's tip, each a fresh panel that wrote its prediction before reading the builder's claim. Turns the refutation into a checks-ledger entry naming the class (list endpoints filter by the caller's tenant), the permissions lens, the evidence path, and a scripts/checks/ script if one fits, after confirming the refutation was not contention. Appends the entry; never edits or removes an existing one.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "clean-rounds",
+          "text": "Requires the configured number of consecutive clean rounds at the lane's current commit before merge"
+        },
+        {
+          "name": "class-not-instance",
+          "text": "Writes a checks-ledger entry that names a failure class, not the single instance"
+        },
+        {
+          "name": "contention-filter",
+          "text": "Confirms the refutation was not a contention red before admitting it as a check"
+        },
+        {
+          "name": "append-only",
+          "text": "Appends to the ledger rather than editing it"
+        }
+      ],
+      "id": 5
     }
   ]
 }

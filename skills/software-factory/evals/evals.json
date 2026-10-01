@@ -6,14 +6,34 @@
       "name": "gate-0-catches-oracle-defects",
       "prompt": "I'm about to kick off an unattended Claude build of our clinic booking app over the weekend. Register is attached. Can you prime it so it can run without me?",
       "expected_output": "Starts with gate 0. Flags BK-CORE-002 as unfalsifiable, BK-CORE-004 as dependent on a live external service (a BLOCKED candidate or needing a local substitute), the CSV row as under-specified, and the definition of done as unreachable ('ready for customers' is not a condition a wave can make fall). Notes that no row requires anything to work through the interface. Leaves achievable-evidence and coverage questions to the product owner rather than ruling on them. Does not proceed to later gates as if the register were frozen.",
-      "files": ["evals/files/register.md"],
+      "files": [
+        "evals/files/register.md"
+      ],
       "assertions": [
-        {"name": "flags-unfalsifiable-row", "text": "Identifies BK-CORE-002's pass criterion as not falsifiable"},
-        {"name": "flags-live-dependency", "text": "Identifies BK-CORE-004 as depending on a live external provider"},
-        {"name": "flags-unreachable-done", "text": "Says the definition of done contains a condition no wave can make true"},
-        {"name": "no-interface-row", "text": "Notes that nothing requires behaviour to be proved through the user interface"},
-        {"name": "defers-to-owner", "text": "Asks the product owner to repair the register rather than editing rows itself"},
-        {"name": "gate-0-first", "text": "Does not fill any later-gate template before the register review exists"}
+        {
+          "name": "flags-unfalsifiable-row",
+          "text": "Identifies BK-CORE-002's pass criterion as not falsifiable"
+        },
+        {
+          "name": "flags-live-dependency",
+          "text": "Identifies BK-CORE-004 as depending on a live external provider"
+        },
+        {
+          "name": "flags-unreachable-done",
+          "text": "Says the definition of done contains a condition no wave can make true"
+        },
+        {
+          "name": "no-interface-row",
+          "text": "Notes that nothing requires behaviour to be proved through the user interface"
+        },
+        {
+          "name": "defers-to-owner",
+          "text": "Asks the product owner to repair the register rather than editing rows itself"
+        },
+        {
+          "name": "gate-0-first",
+          "text": "Does not fill any later-gate template before the register review exists"
+        }
       ]
     },
     {
@@ -23,10 +43,22 @@
       "expected_output": "Explains that gate 2 is the user's action: the permission file write is refused at autonomous seats and a foreground success proves nothing. Fills the allowlist template to a path the user can paste from, with named scripts only, and says where it goes. Does not mark gate 2 met until the user confirms and a background-seat check passes.",
       "files": [],
       "assertions": [
-        {"name": "does-not-write-settings", "text": "Does not write or edit .claude/settings.json"},
-        {"name": "named-scripts-only", "text": "The prepared allowlist contains named scripts, not bare docker, psql, sh or git reset"},
-        {"name": "background-check", "text": "States that the allowlist must be proved from a background seat or subagent"},
-        {"name": "gate-not-met", "text": "Reports gate 2 as blocked on the user, not met"}
+        {
+          "name": "does-not-write-settings",
+          "text": "Does not write or edit .claude/settings.json"
+        },
+        {
+          "name": "named-scripts-only",
+          "text": "The prepared allowlist contains named scripts, not bare docker, psql, sh or git reset"
+        },
+        {
+          "name": "background-check",
+          "text": "States that the allowlist must be proved from a background seat or subagent"
+        },
+        {
+          "name": "gate-not-met",
+          "text": "Reports gate 2 as blocked on the user, not met"
+        }
       ]
     },
     {
@@ -36,10 +68,22 @@
       "expected_output": "Fills lane-cut from lane-cut.conf with trunk build/v1, never infers the base. Warns against the Workflow tool's isolation: 'worktree' because it cuts from main. Records that main is the deploy branch and is never pushed by the loop. Exit condition is a dry run that creates nothing.",
       "files": [],
       "assertions": [
-        {"name": "trunk-from-conf", "text": "Trunk is set in lane-cut.conf, not hardcoded in the script"},
-        {"name": "warns-isolation-worktree", "text": "Warns that isolation: 'worktree' would cut from main"},
-        {"name": "deploy-branch-protected", "text": "States the loop never pushes main"},
-        {"name": "dry-run-exit", "text": "Uses lane-cut.sh --dry-run as the exit check"}
+        {
+          "name": "trunk-from-conf",
+          "text": "Trunk is set in lane-cut.conf, not hardcoded in the script"
+        },
+        {
+          "name": "warns-isolation-worktree",
+          "text": "Warns that isolation: 'worktree' would cut from main"
+        },
+        {
+          "name": "deploy-branch-protected",
+          "text": "States the loop never pushes main"
+        },
+        {
+          "name": "dry-run-exit",
+          "text": "Uses lane-cut.sh --dry-run as the exit check"
+        }
       ]
     },
     {
@@ -49,11 +93,48 @@
       "expected_output": "Treats this as an environment stall, not a code problem. Checks host sleep first for the interrupted agents, and swap and memory pressure and resident seats for the timeouts, by measuring rather than asking. Proposes the missing gates as a diff to the existing build rather than regenerating anything.",
       "files": [],
       "assertions": [
-        {"name": "sleep-first", "text": "Checks host sleep logs before other theories for [Request interrupted]"},
-        {"name": "measures-memory", "text": "Measures swap and memory rather than asking the user what the machine is"},
-        {"name": "no-regeneration", "text": "Does not regenerate the loop prompt or conventions"},
-        {"name": "timeouts-not-regression", "text": "Says timeouts in untouched code point to the host or test estate before the tree"}
+        {
+          "name": "sleep-first",
+          "text": "Checks host sleep logs before other theories for [Request interrupted]"
+        },
+        {
+          "name": "measures-memory",
+          "text": "Measures swap and memory rather than asking the user what the machine is"
+        },
+        {
+          "name": "no-regeneration",
+          "text": "Does not regenerate the loop prompt or conventions"
+        },
+        {
+          "name": "timeouts-not-regression",
+          "text": "Says timeouts in untouched code point to the host or test estate before the tree"
+        }
       ]
+    },
+    {
+      "name": "login-and-usage-preflight",
+      "prompt": "We're leaving the build running over the weekend on the office Mac. Last time it died halfway through a barrier when my login expired, and on Saturday it hit the usage limit and just sat there. How do we stop both?",
+      "expected_output": "Treats them differently. The login needs a person, so pre-flight (gate 11) stops the loop cleanly before any wave or barrier the login cannot outlast, with an auth-expiring handoff; it asks what reports the login's time left, or has the owner record the login time in auth-at. The usage limit resets by itself, so pre-flight pauses until the reset time and the seat is woken by a named resume mechanism, tested once before the weekend. Also covers disk and reboots, including switching off automatic OS restarts.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "stop-vs-pause",
+          "text": "Stops for the login and pauses for the usage limit"
+        },
+        {
+          "name": "never-mid-barrier",
+          "text": "Checks before each barrier attempt, so a barrier is never started that the login cannot finish"
+        },
+        {
+          "name": "login-source",
+          "text": "Settles what reports the login's time left, or has the owner record the login time"
+        },
+        {
+          "name": "resume-mechanism",
+          "text": "Names what wakes the seat after a pause and says to test it"
+        }
+      ],
+      "id": 5
     }
   ]
 }

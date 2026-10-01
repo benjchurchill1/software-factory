@@ -1,7 +1,8 @@
-# Gates 4, 5 and 6: test data, lane provisioning, lane databases
+# Gates 4, 5, 6, 11 and 12: test data, lanes, lane databases, pre-flight, the ratchet
 
-These three gates assume a shared stateful service (a database, a broker). The
-SKILL.md step for each says what to do and when it is closed. This file says
+Gates 4 to 6 assume a shared stateful service (a database, a broker); gates 11
+and 12 apply to every build. The SKILL.md step for each says what to do and
+when it is closed. This file says
 why, and holds the exact contract each script must meet, which is also what
 `scripts/verify-factory.py` tests.
 
@@ -87,6 +88,8 @@ Runs after the serial merge. One PASS or FAIL line per check:
 - every lane branch is an ancestor of the integration branch (or declared
   squashed with `--squashed`);
 - no lane diff adds `trace.zip`, `*.har` or `.env*`;
+- the ratchet (gate 12): no committed test edited, both ledgers append-only,
+  clean panel rounds at every lane tip, the ledger's checks green;
 - the typecheck, the registry duplicate check, and the suites lanes cannot run.
 
 The trunk, the integration branch and the lane glob come from `lane-cut.conf`.
@@ -121,3 +124,106 @@ expensive fixture.
 - A second run on a live lane is refused.
 - Lane names follow the same rule as `lane-cut.sh`, and unknown or reused
   identities are refused.
+
+## Gate 11: the build sees its limits coming
+
+### Why, and what it is not
+
+New in 0.3.0; not measured on the source build, whose seats were attended
+often enough that a person noticed an expired login. An unattended build has no
+such person, and four things arrive from outside the product: a login that
+expires, a usage window that runs out, a disk that fills, a host that reboots.
+Each surfaces as a failure in whatever step was running. The barrier is the
+worst place: it holds the shared resource, and an interrupted barrier leaves
+the recovery protocol a merge, a migration or a check to reconcile.
+
+The login is the one only a person can fix, so it **stops** the loop, early
+enough to stop cleanly. The usage window comes back by itself, so it
+**pauses** the loop until the reset. A reboot sends the loop to its recovery
+protocol. Low disk is fixed before anything launches.
+
+### Script contract: `preflight.sh`
+
+- Runs at wave open (`--queue <file>`, required) and before every barrier
+  attempt (`--barrier`). One line per check, in order: config, disk, boot,
+  reboot, auth, usage, together.
+- **config**: every generated file the loop reads exists and holds no
+  unreplaced slot.
+- **disk**: at least the floor free on every listed path (`df -Pk`, which reads
+  the same on macOS and Linux).
+- **boot**: the boot id matches the one recorded in the run-state directory;
+  the first run records it; a mismatch is RECOVER until `--ack-reboot`.
+- **reboot**: a pending reboot is WARN and does not block.
+- **auth**: the login's time left (reported, or counted from `auth-at` and the
+  lifetime) covers the step's time limit plus the handoff reserve, or STOP. When
+  it cannot be told, STOP: an unknown login is not a live one.
+- **usage**: `guards.py pace` over the journal's usage events. STOP when the
+  total budget cannot fund the step plus the reserve; PAUSE, printing
+  `resume_at`, when a recorded usage limit has not reset yet, or the window's
+  remainder cannot fund the step.
+- **together**: at wave open, no pair from the never-together ledger is in the
+  queue.
+- Exit 0 go, 1 FAIL, 10 PAUSE, 20 STOP, 30 RECOVER; precedence STOP, RECOVER,
+  FAIL, PAUSE. `--dry-run` prints every check and runs none. It writes nothing
+  but the boot id.
+
+A pause is written to the keep-alive hook's `pause` file, which lets the seat
+stop, uncounted, until the reset. What wakes it then is the rig's
+`<RESUME_MECHANISM>`: `/loop`'s next firing, a scheduled resume of the session,
+or, where there is nothing, a line on the owner's list with the reset time.
+
+## Gate 12: tests and checks only get stricter
+
+### Why
+
+New in 0.3.0, and the direct extension of two source-build rules that held only
+while someone watched: "never weaken a test" and "contention is not refutation"
+(`evidence.md`). With nobody reviewing every wave, three things decide whether
+the verification drifts:
+
+1. **A weakened test is invisible.** The suite goes green and the record looks
+   like diligence. The test freeze makes a committed test impossible to edit
+   and possible only to supersede, on the record.
+2. **A lesson that is only fixed is learnt once.** The checks ledger turns each
+   refutation that stood into a check every later panel applies, and the
+   never-together ledger does the same for lanes that collided.
+3. **A list the loop can shorten is not a ratchet.** Both ledgers are
+   append-only, and an entry leaves only by a ruling that names it, made by the
+   owner or the reviewing seat, never by the loop.
+
+Clean rounds belong here too: a lane is finished only when fresh panels, in a
+row, find nothing at the same commit, and each forms its view before it reads
+the builder's claim.
+
+### Contract: `guards.py`
+
+Standard library only; each subcommand prints one line and exits 0 PASS, 1
+FAIL, 10 PAUSE or 20 STOP.
+
+- `tests`: against the trunk, a committed test file (by the freeze config's
+  `tests` globs, which include `scripts/checks/**`) that is modified is FAIL;
+  one deleted needs a supersessions record whose successor exists and names
+  it; any change at all to a `frozen` path (by default `guards.py`,
+  `pre-barrier.sh`, `preflight.sh`) is FAIL; the freeze config itself
+  unchanged; the supersessions register append-only.
+- **Who judges.** `pre-barrier.sh` runs `guards.py` as committed on the trunk,
+  never the merge candidate's copy, so a lane that edits the guards cannot
+  pass its own merge. The trunk's copy starts as the owner's and can change only
+  through a merge that this same check would fail.
+- `ledger`: the file's trunk lines are a prefix of its current lines; every line
+  is an `add` or a `retire`; an `add` has an id, a source and (checks) a class,
+  and any `run` is a script under `scripts/checks/` that exists; a `retire`
+  follows its `add` and cites a ruling file that exists and names the id.
+- `checks`: every active check with a script runs green.
+- `panels`: for each lane, the last N panel events in the journal are clean and
+  at the lane's tip commit, and no stage passed the cap.
+- `together`, `pace`, `auth`: the pre-flight checks above.
+
+### The test-freeze hook
+
+`hooks/test-freeze.py`, registered by the plugin as a PreToolUse hook on Edit,
+Write, MultiEdit and NotebookEdit. Inert in a checkout without
+`.claude/test-freeze.json`. Refuses an edit to a path matching the config's
+globs, or the `frozen` list, that exists on the config's `base`, and to the
+config itself; allows everything else, including tests a lane created. A shell command gets past it,
+which is why the pre-barrier line is the guarantee and the hook is the warning.

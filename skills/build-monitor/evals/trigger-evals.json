@@ -56,6 +56,10 @@
     "should_trigger": true
   },
   {
+    "query": "the wave build is crawling, 6 hours a wave now. can you tell me where the time is actually going",
+    "should_trigger": true
+  },
+  {
     "query": "write a GitHub Actions workflow that runs our Playwright tests on every PR",
     "should_trigger": false
   },

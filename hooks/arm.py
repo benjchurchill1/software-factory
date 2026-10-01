@@ -11,10 +11,12 @@
 Each repo gets its own state directory under ~/.claude/state/build-loop/, so
 two builds on one machine never share a counter or a stop file. `arm` prints
 the stop-file path the build seat will be told to write when it halts on
-purpose. Arming is the owner's action, as gate 2 of the factory is: the build
-seat never arms itself.
+purpose, and the pause-file path it writes when a usage window is spent.
+Arming is the owner's action, as gate 2 of the factory is: the build seat
+never arms itself.
 """
 import argparse
+import datetime as dt
 import hashlib
 import json
 import os
@@ -47,6 +49,10 @@ def cmd_arm(a):
     if stop.exists():
         print(f"cleared a previous stop file: {stop.read_text().strip() or '(empty)'}")
         stop.unlink()
+    pause = state / "pause"
+    if pause.exists():
+        print(f"cleared a previous pause file: {pause.read_text().strip() or '(empty)'}")
+        pause.unlink()
     cfg = {"cwd_prefix": real, "marker": a.marker, "max": a.max, "max_total": a.max_total,
            "prompt_path": a.prompt_path, "progress_paths": a.progress_path,
            "exclude_sessions": a.exclude,
@@ -54,7 +60,8 @@ def cmd_arm(a):
     tmp = state / "armed.json.tmp"
     tmp.write_text(json.dumps(cfg, indent=2) + "\n")
     tmp.replace(state / "armed.json")
-    print(f"armed {real}\n  state  {state}\n  stop   {stop}\n  expires in {MAX_AGE_H} h")
+    print(f"armed {real}\n  state  {state}\n  stop   {stop}\n  pause  {pause}\n"
+          f"  expires in {MAX_AGE_H} h")
     print("Put the marker in the prompt you PASTE to start the build seat, not in the prompt file.")
 
 
@@ -71,8 +78,18 @@ def describe(state):
     except (OSError, ValueError):
         pass
     stop = state / "stop"
+    until = None
+    try:
+        pause = json.loads((state / "pause").read_text())
+        until = pause.get("until") if isinstance(pause, dict) else None
+        when = dt.datetime.fromisoformat(str(until).replace("Z", "+00:00"))
+        when = when if when.tzinfo else when.replace(tzinfo=dt.timezone.utc)
+        until = until if when > dt.datetime.now(dt.timezone.utc) else None
+    except (OSError, ValueError, TypeError):
+        until = None
     status = ("released (stop file)" if stop.exists()
-              else "expired" if age_h > MAX_AGE_H else "armed")
+              else "expired" if age_h > MAX_AGE_H
+              else f"paused until {until}" if until else "armed")
     return (f"{cfg.get('cwd_prefix')}\n  {status}, {age_h:.1f} h old, "
             f"{count.get('consecutive', 0)}/{cfg.get('max', 60)} without progress, "
             f"{count.get('total', 0)}/{cfg.get('max_total', 500)} total\n  state {state}")

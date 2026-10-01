@@ -14,11 +14,13 @@
     "  deploys, pushes and publishes: a person confirms every one",
     "  git reset/--force: history is not the loop's to rewrite",
     "  .env, secrets, this file: the loop may not widen its own authority",
+    "  .claude/test-freeze.json: the loop may not unfreeze its own tests",
     "  bare docker/psql/sh: unbounded",
     "",
     "AN ALLOWLISTED SCRIPT IS ONLY AS BOUNDED AS THE LOOP'S ABILITY TO EDIT IT:",
     "lane-cut and pre-barrier source scripts/lane-cut.conf, and the loop edits",
-    "scripts. Review diffs to scripts/ and package.json at each record.",
+    "scripts. Review diffs to scripts/ and package.json at each record. That",
+    "includes scripts/checks/: guards.py runs every check script the ledger names.",
     "",
     "IF A COMMAND IS REFUSED ANYWAY: the loop tries ONCE, records the refusal",
     "verbatim in the barrier artefact, puts the exact command on the person's",
@@ -41,11 +43,16 @@
       "Bash(bash scripts/loop-status.sh:*)",
       "Bash(<PKG_RUNNER> check:*)",
       "Bash(<PKG_RUNNER> gates:adopt:*)",
-      "Bash(bash scripts/lane-cut.sh:*)"
+      "Bash(bash scripts/lane-cut.sh:*)",
+      "Bash(bash scripts/pre-barrier.sh:*)",
+      "Bash(bash scripts/preflight.sh:*)",
+      "Bash(python3 scripts/guards.py:*)"
     ],
     "deny": [
       "Edit(.claude/settings*.json)",
       "Write(.claude/settings*.json)",
+      "Edit(.claude/test-freeze.json)",
+      "Write(.claude/test-freeze.json)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)"
     ]

@@ -99,6 +99,69 @@ standard equivalents and should be checked once on this rig before relying on
 them. When agents die "[Request interrupted]", run the "did it sleep?" check
 before any other theory.
 
+## Disk and reboots
+
+`preflight.sh` checks both at wave open and before every barrier attempt.
+
+**Disk.** A full disk fails as whatever wrote last: a migration, a trace, the
+container runtime's own storage. Free space here is measured, not assumed:
+
+| Path | What fills it | Free now |
+| --- | --- | --- |
+| <REPO_PATH> | worktrees, test artefacts, evidence | <GB> GB |
+| <RUNTIME_DATA_PATH> | container images and volumes | <GB> GB |
+| <RUN_STATE_DIR> | the journal and checkpoint | <GB> GB |
+
+Pre-flight refuses to launch below **<DISK_FREE_GB> GB** free on any of them.
+Worktrees are the usual cause: `git worktree list`, and the lane-db `drop` of
+each retired lane.
+
+**Reboots.** A reboot kills every agent and process, clears temporary
+directories, and leaves the journal describing a machine that no longer exists.
+Pre-flight compares the boot id with the one it last saw; a change means the
+recovery protocol runs before anything else (exit 30). A pending reboot (an OS
+update waiting) is a WARN, put on the owner's list so it happens between waves,
+not in a barrier. Keep the row for this rig's OS:
+
+| OS | Boot id | Reboot pending? |
+| --- | --- | --- |
+| macOS | `sysctl -n kern.boottime` | `softwareupdate --list 2>&1 \| grep -qi restart` (slow; check it once here) |
+| Linux | `cat /proc/sys/kernel/random/boot_id` | `test -f /var/run/reboot-required` (Debian and Ubuntu) |
+| Windows / WSL | `(Get-CimInstance Win32_OperatingSystem).LastBootUpTime` | `Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'` |
+
+Automatic OS updates that restart the machine are switched off for the life of
+the build, or scheduled outside it: <UPDATE_POLICY>.
+
+## Login and usage
+
+**The login.** An expired login cannot be renewed without a person, so the
+build must see it coming. Pre-flight needs the time left before the step it is
+about to start (the wave's time limit, or the barrier's, plus the handoff
+reserve) and stops the loop cleanly if the login will not last that long.
+
+| | |
+| --- | --- |
+| How long a login lasts here | <AUTH_LIFETIME_HOURS> h |
+| What reports the time left | <AUTH_CHECK_COMMAND>, or: nothing, so the owner records the login time |
+
+Where nothing reports it, the owner runs
+`date -u +%FT%TZ > <RUN_STATE_DIR>/auth-at` after every login. Pre-flight
+counts from that, and stops when it cannot tell.
+
+**The usage window.** A usage limit resets by itself, so hitting one is a pause,
+not a stop. Pre-flight estimates the next wave or barrier from the journal's
+usage events (the largest of the last three) and pauses until the window's reset
+time when what is left cannot fund it.
+
+| | |
+| --- | --- |
+| What reports the window | <USAGE_WINDOW_COMMAND> (prints what is left and the reset time, or nothing) |
+| What wakes the seat at the reset | <RESUME_MECHANISM> |
+
+With no window command, the loop still pauses when a request is refused for a
+usage limit: it records the refusal's reset time, and pre-flight pauses until
+then. Whatever wakes the seat, test it once here, before the first wave.
+
 ## When the runtime wedges
 
 Measured twice on one build, three to ten hours lost each time, both under

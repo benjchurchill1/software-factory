@@ -1,6 +1,6 @@
 ---
 name: software-factory
-description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, then close eleven gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats), then hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for writing or editing the loop prompt itself (build-loop) or for watching a build in progress (build-monitor).
+description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, then close thirteen gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter), then hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for writing or editing the loop prompt itself (build-loop) or for watching a build in progress (build-monitor).
 ---
 
 # Software factory
@@ -8,16 +8,17 @@ description: Prime a project so an autonomous, unattended software build can fin
 The loop is the easy part. What decides whether an autonomous build finishes is
 the factory around it: an oracle worth building against, a rig that does not
 swap, authority the loop already holds, a harness that cleans up after itself,
-and state nobody maintains by hand.
+state nobody maintains by hand, limits the build sees coming, and checks that
+only get stricter.
 
 This skill primes those. **[references/evidence.md](references/evidence.md)**
 records what each gate cost when it was missing, measured on one real build and
 cited to its artefacts; read it when a user wants to skip one.
 
 `build-loop` writes the loop prompt, the conventions doc, the status readout and
-the scoreboard. This runs first and invokes it at step 7.
+the scoreboard. This runs first and invokes it at step 8.
 
-## The eleven gates
+## The thirteen gates
 
 Work them in order. Each is a yes/no with a named artefact and a stated exit
 condition. **Gate 0 decides whether the build is worth running at all**; gates
@@ -35,7 +36,9 @@ condition. **Gate 0 decides whether the build is worth running at all**; gates
 | 7 | Every done condition is reachable, and gates are selectable as work | the loop prompt's §Definition of done | the agent |
 | 8 | State the loop reads is generated, and the record is capped | a regeneration path per derived file | the agent |
 | 9 | Deploy is one guarded script, or there is no deploy | `scripts/deploy-<env>.sh` | the agent writes, the user confirms each run |
-| 10 | Every seat is named, and one owns the trunk | the conventions doc's §Seats, added at step 7 | the agent |
+| 10 | Every seat is named, and one owns the trunk | the conventions doc's §Seats, added at step 8 | the agent |
+| 11 | The build sees its limits coming: login, usage, disk, reboots | `scripts/preflight.sh`; the rig doc's §Disk and reboots and §Login and usage | the agent writes; **the user records the login time** |
+| 12 | Tests and checks only get stricter | `.claude/test-freeze.json`, the checks and never-together ledgers, `scripts/guards.py` | the agent drafts; **the user places and commits the freeze config** |
 
 **Waivers.** Gates 4 and 6 assume a shared stateful service (a database, a
 broker). A project with none waives them **with the reason written into the
@@ -107,7 +110,7 @@ Do this instead, from
    bare `docker`, `psql`, `sh` or `git reset`) and write it to a path the user
    can paste from.
 2. Tell the user exactly where it goes and that it is per-machine.
-3. **Exit condition:** the user confirms it is in place, **and** step 8's
+3. **Exit condition:** the user confirms it is in place, **and** step 9's
    background-seat check passes.
 
 Two more standing instructions are settled here, in the user's words in the
@@ -176,7 +179,43 @@ the barrier.
 `clone`, one small test, and `drop` all succeed; the shared service is
 unchanged afterwards.
 
-### 7. Close gates 7, 8 and 10, then build the loop
+### 7. Pre-flight and the ratchet (gates 11 and 12)
+
+**[references/harness-gates.md](references/harness-gates.md)** §Gates 11 and
+12 has the contracts. Both gates are new in 0.3.0 and were not measured on the
+source build; the reference says what they defend against and why.
+
+**Gate 11.** Copy `assets/guards.py` to `scripts/guards.py` and commit it on
+the trunk (pre-barrier runs the trunk's copy). Fill
+`assets/preflight.template.sh`: the generated files it scans for slots
+(`<GENERATED_FILES>`), the disk paths and floor (`<DISK_PATHS>`,
+`<DISK_FREE_GB>`), the boot-id and reboot-pending commands, the login check and
+lifetime (`<AUTH_CHECK_COMMAND>`, `<AUTH_LIFETIME_HOURS>`), the usage-window
+command, the minutes a wave and a barrier may take plus the handoff reserve
+(`<WAVE_TIME_LIMIT_MINUTES>`, `<BARRIER_MAX_MINUTES>`,
+`<HANDOFF_RESERVE_MINUTES>`), and the spend figures as plain numbers in the
+usage events' unit (`<SPEND_LIMIT_NUMBER>`, `<WAVE_SPEND_LIMIT_NUMBER>`,
+`<BARRIER_SPEND_ESTIMATE>`, `<HANDOFF_RESERVE_NUMBER>`). Fill the rig doc's §Disk and reboots and
+§Login and usage while measuring. Settle how the seat is woken after a usage
+pause (`<RESUME_MECHANISM>`). Where nothing reports the login's time left, the
+user records the login time after each login; say so plainly, it is theirs to
+do.
+
+**Gate 12.** Draft `.claude/test-freeze.json` with the project's test globs
+plus `scripts/checks/**`, the `frozen` list (by default `scripts/guards.py`,
+`scripts/pre-barrier.sh` and `scripts/preflight.sh`), the trunk as `base`, and
+the supersessions register's path, for the user to place and commit: once gate 2's allowlist is in, it denies agent edits to that
+file, as it does to the settings. Seed the checks ledger and the
+never-together ledger as empty files on the trunk, and create
+`scripts/checks/`. Add the ruling policy's §Retiring a check. Fill
+`pre-barrier.sh`'s ratchet slots.
+
+**Exit condition:** `preflight.sh --dry-run` prints every check; one real run
+exits 0 (or its non-zero line is reported and understood); a hand edit of a
+committed test in a scratch branch is refused by the hook and failed by
+`pre-barrier.sh`'s `tests` line.
+
+### 8. Close gates 7, 8 and 10, then build the loop
 
 Gates **7**, **8** and **10** are in
 **[references/harness-invariants.md](references/harness-invariants.md)** with
@@ -216,12 +255,14 @@ does not re-ask, in the terms its slot table uses:
 | 8: generated state | `<REGENERATED_FILES>`, `<RECORD_CAPS>` |
 | 9: deploy | `<DEPLOY_SCOPE>` (the guarded script and its confirmation rule), `<DEPLOY_BRANCH>` |
 | 10: seats | `<OWNER>`, `<TRUNK_OWNER>` (the monitor seat is `build-monitor`, not a slot) |
+| 11: pre-flight | `<PREFLIGHT_COMMAND>`, `<RESUME_MECHANISM>` |
+| 12: the ratchet | `<CHECKS_LEDGER>`, `<NEVER_TOGETHER_PATH>`, `<SUPERSESSIONS_PATH>`, `<CLEAN_ROUNDS>` |
 | budgets and recovery | `<RUN_STATE_DIR>`, `<SPEND_LIMIT>`, `<WAVE_SPEND_LIMIT>`, `<TIME_LIMIT_MINUTES>`, `<WAVE_TIME_LIMIT_MINUTES>`, `<HANDOFF_RESERVE>` |
 
 Let it interview for what the factory did not settle: the oracle's path, the
 green command, the blocked list, wave shape, stop conditions.
 
-### 8. Verify, then hand over
+### 9. Verify, then hand over
 
 Do not hand over an unprimed factory or an unrun loop.
 
@@ -230,6 +271,9 @@ Do not hand over an unprimed factory or an unrun loop.
 - `estate-maintain.sh --dry-run <evidence-dir>`: plans, creates nothing.
 - `lane-cut.sh --dry-run <name>`: prints every command, cuts nothing.
 - `pre-barrier.sh --dry-run`: prints every check, runs none.
+- `preflight.sh --dry-run`: prints every check; one real run is recorded.
+- The test-freeze hook refuses an edit to a committed test, and allows a new
+  one, in a scratch branch.
 - `lane-db.sh up`, `clone`, one small test, `drop`: report the replay time.
 - The deploy script with its guard tripped: refuses.
 - `python3 <this skill's base directory>/scripts/verify-factory.py` passes.
@@ -253,7 +297,7 @@ person runs first:
 - No unreplaced slot in any generated file: `grep -nE '<[A-Z][A-Z0-9_]*(:[^>]*)?>'`
   over everything written. Every slot in this skill's assets is that shape.
 
-Then report each of the eleven gates as **met**, **waived with a reason**, or
+Then report each of the thirteen gates as **met**, **waived with a reason**, or
 **blocked on the user**, and state how to start the loop, how to watch it
 (start the monitor seat with `build-monitor` in a second session, beside
 `loop-status.sh`), and what it will produce when it finishes.

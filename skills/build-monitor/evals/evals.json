@@ -8,8 +8,14 @@
       "expected_output": "Declines to write into the shared checkout during a barrier. Drafts the fix in its scratchpad and hands the path to the build seat by message or the file channel, to place after the barrier with attribution.",
       "files": [],
       "assertions": [
-        {"name": "no-checkout-write", "text": "Does not edit any file in the shared checkout"},
-        {"name": "hands-to-build-seat", "text": "Hands the change to the build seat to place"}
+        {
+          "name": "no-checkout-write",
+          "text": "Does not edit any file in the shared checkout"
+        },
+        {
+          "name": "hands-to-build-seat",
+          "text": "Hands the change to the build seat to place"
+        }
       ]
     },
     {
@@ -19,9 +25,18 @@
       "expected_output": "Does not call it stalled from missing commits. Says what liveness looks like (processes, database backends) and checks those via the status readout before judging. Does not message the running workflow agent.",
       "files": [],
       "assertions": [
-        {"name": "not-stalled-by-absence", "text": "Does not treat the absence of commits as evidence of a stall"},
-        {"name": "checks-processes", "text": "Checks processes or database backends for liveness"},
-        {"name": "no-agent-message", "text": "Does not message the running lane agent directly"}
+        {
+          "name": "not-stalled-by-absence",
+          "text": "Does not treat the absence of commits as evidence of a stall"
+        },
+        {
+          "name": "checks-processes",
+          "text": "Checks processes or database backends for liveness"
+        },
+        {
+          "name": "no-agent-message",
+          "text": "Does not message the running lane agent directly"
+        }
       ]
     },
     {
@@ -31,9 +46,18 @@
       "expected_output": "Reviews against the criterion verbatim, not the self-report. Takes screenshots at 390 and 1440 px for each changed screen and checks page length, truncation, raw identifiers, missing primary action and silent list caps. Answers with one of the four verdict forms.",
       "files": [],
       "assertions": [
-        {"name": "criterion-verbatim", "text": "Checks the register criterion itself, not the panel's summary"},
-        {"name": "two-widths", "text": "Screenshots at phone and desktop widths"},
-        {"name": "verdict-form", "text": "Answers APPROVED, APPROVED with an exclusion, a stage instruction, or HOLD"}
+        {
+          "name": "criterion-verbatim",
+          "text": "Checks the register criterion itself, not the panel's summary"
+        },
+        {
+          "name": "two-widths",
+          "text": "Screenshots at phone and desktop widths"
+        },
+        {
+          "name": "verdict-form",
+          "text": "Answers APPROVED, APPROVED with an exclusion, a stage instruction, or HOLD"
+        }
       ]
     },
     {
@@ -43,9 +67,43 @@
       "expected_output": "Regenerates the progress page with progress.py, opens or serves the local HTML file instead of publishing, and answers in three lines: done conditions met, current wave and barrier state, what waits on the owner.",
       "files": [],
       "assertions": [
-        {"name": "regenerates", "text": "Runs progress.py before answering"},
-        {"name": "local-fallback", "text": "Uses the local HTML file rather than claiming to publish"},
-        {"name": "three-lines", "text": "Answers in three lines led by done conditions, wave state and the owner's list"}
+        {
+          "name": "regenerates",
+          "text": "Runs progress.py before answering"
+        },
+        {
+          "name": "local-fallback",
+          "text": "Uses the local HTML file rather than claiming to publish"
+        },
+        {
+          "name": "three-lines",
+          "text": "Answers in three lines led by done conditions, wave state and the owner's list"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "why-is-it-slow",
+      "prompt": "Waves are taking five or six hours each now and I don't know why. What's slowing it down?",
+      "expected_output": "Regenerates the page and reads 'Where the time went' for the last few waves. Names the largest segment with its measured share (for example unaccounted time, review wait or the barrier) and one concrete change that would shrink it. If the journal has no phase events, says so and points to the loop prompt's phase-timing rule rather than estimating.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "regenerates",
+          "text": "Runs progress.py before answering"
+        },
+        {
+          "name": "uses-measured-split",
+          "text": "Quotes the measured phase split rather than estimating"
+        },
+        {
+          "name": "one-change",
+          "text": "Proposes a specific change tied to the largest segment"
+        },
+        {
+          "name": "handles-no-data",
+          "text": "If phase events are missing, says so instead of guessing"
+        }
       ]
     }
   ]

@@ -16,7 +16,9 @@ is only as good as the loop's attention on the day.
 | The served revision must equal the commit deployed (`deploy-<env>.sh` §5) | Writing an intent to the journal before each side effect and its outcome after |
 | Lane names and identities are validated; a live lane is not run twice (`lane-cut.sh`, `lane-db.sh`) | Checking the previous owner is gone before resuming |
 | The keep-alive hook stops holding at its caps and after 72 hours | Not re-merging, re-migrating or re-deploying when an outcome is unknown |
-| | Stopping when the remaining budget cannot fund the next step plus the handoff |
+| No wave or barrier starts that the login, the usage window or the total budget cannot finish, and a reboot is detected (`preflight.sh`) | Stopping when the remaining budget cannot fund the next operation inside a wave, plus the handoff |
+| The keep-alive hook lets a paused seat stop, uncounted, until its reset time | Writing the pause file, and waking at the reset (`<RESUME_MECHANISM>`) |
+| A committed test edited, a ledger edited or shortened without a ruling, or a lane without its clean rounds, fails the barrier (`pre-barrier.sh`) | Turning each refutation that stood into a check |
 
 Nothing in Claude Code stops a session at a spend ceiling. The budget works only
 if the loop can read what it has spent, so settle the **usage source** at
@@ -25,6 +27,24 @@ from the provider's usage console and writes into the journal at each barrier.
 Pick one that exists in your setup. The generated loop treats missing usage as a
 reason to stop dispatching, so a build with no usage source will stop at its
 first operation. That is deliberate: it is cheaper to find out at priming.
+
+## Login and usage
+
+The usage source above also paces the build. Pre-flight reads the journal's
+`usage` events, takes the largest of the last three waves (or barriers) as the
+estimate for the next, and:
+
+- **stops** (`budget-exhausted`) when the total budget cannot fund it plus the
+  reserve;
+- **pauses** until the reset when a usage limit was hit and has not reset, or
+  when the window's remainder cannot fund it. A pause is not a stop: the seat
+  writes the keep-alive hook's `pause` file, is woken at the reset, runs
+  pre-flight again and carries on. It is not a wave with no change.
+
+The login is different: nothing but a person renews it. Pre-flight **stops**
+(`auth-expiring`) when the login will not outlast the next step plus the handoff
+reserve, or when its time left cannot be told. Settle at priming what reports
+the time left, or have the owner record each login time in `auth-at`.
 
 ## Terms
 
@@ -92,6 +112,9 @@ not that a running agent follows it.
 | **Deploy accepted**, response or verification lost | Query the platform by target, commit and recorded deployment id, and check the served revision. Do not submit again while the outcome is unknown. |
 | Restart at **exhausted spend/deadline** | The original totals, open reservations and downtime still count. No new dispatch. Write the `budget-exhausted` handoff from the reserve. |
 | Empty frontier with rows in `WIP`, in cooldown or in a dependency cycle | Retry eligible ownerless `WIP`. Otherwise report a dependency stall with the row ids and the chain. Not done, and no empty waves. |
+| **Host reboots** between two waves | Pre-flight exits 30 before any cut. The recovery protocol runs (owner, lanes, journal tail, shared resource), then `--ack-reboot`, then the wave opens. Nothing launched first. |
+| **Usage limit** refused a request mid-lane | The refusal's reset time is journalled as `rate_limit`. The lane's reservation is kept. Pre-flight pauses until the reset; the seat writes the pause file and stops; on waking it retries the lane from its checkpoint, not from scratch. |
+| **Login expires** before a barrier | Pre-flight, run before the attempt, exits 20. No barrier starts. The `auth-expiring` handoff names the wave's state, and the owner's list says to log in again. |
 
 ## Release readiness (gate 9)
 

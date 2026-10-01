@@ -252,6 +252,105 @@ def history(repo, cfg):
     return recs
 
 
+# ── where the time went ─────────────────────────────────────────────────────
+# The build seat journals {"type": "phase", "wave": N, "phase": P, "lane": L,
+# "event": "start"|"end", "at": ISO-8601 UTC}. Lanes overlap, so phase totals
+# would overcount. Instead every minute of a wave goes to the highest-priority
+# phase active in that minute: work outranks waiting. A minute with nothing
+# active is "unaccounted": sleep, a stopped seat, a stall nobody recorded.
+# "paused" is a usage-window pause the seat recorded; it ranks last, so a
+# minute counts as paused only if nothing else was happening.
+PHASES = ["barrier", "record", "cut", "build", "verify", "review_wait", "owner_wait", "paused"]
+UNACCOUNTED = "unaccounted"
+
+
+def parse_at(value):
+    try:
+        t = dt.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return t if t.tzinfo else t.replace(tzinfo=dt.timezone.utc)
+    except ValueError:
+        return None
+
+
+def phase_intervals(lines):
+    """Journal lines to {wave: [(phase, lane, start, end_or_None)]}. Tolerates junk."""
+    open_, done = {}, {}
+    for line in lines:
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(ev, dict) or ev.get("type") != "phase" or ev.get("phase") not in PHASES:
+            continue
+        at = parse_at(ev.get("at"))
+        try:
+            wave = int(ev.get("wave"))
+        except (TypeError, ValueError):
+            continue
+        if at is None:
+            continue
+        key = (wave, ev["phase"], str(ev.get("lane") or ""), str(ev.get("attempt") or ""))
+        if ev.get("event") == "start":
+            open_.setdefault(key, at)            # a repeated start keeps the first
+        elif ev.get("event") == "end" and key in open_:
+            start = open_.pop(key)
+            if at >= start:
+                done.setdefault(wave, []).append((key[1], key[2], start, at))
+    for (wave, phase, lane, _), start in open_.items():
+        done.setdefault(wave, []).append((phase, lane, start, None))
+    return done
+
+
+def attribute(intervals, until):
+    """Split a wave's span into minutes per phase, by priority. Returns (span_min, {phase: min})."""
+    spans = [(p, s, e or until) for p, _, s, e in intervals if (e or until) > s]
+    if not spans:
+        return 0.0, {}
+    points = sorted({t for _, s, e in spans for t in (s, e)})
+    rank = {p: i for i, p in enumerate(PHASES)}
+    out = {}
+    for a, b in zip(points, points[1:]):
+        active = [p for p, s, e in spans if s <= a and e >= b]
+        who = min(active, key=rank.get) if active else UNACCOUNTED
+        out[who] = out.get(who, 0.0) + (b - a).total_seconds() / 60
+    return (points[-1] - points[0]).total_seconds() / 60, out
+
+
+def timings(repo, cfg, current, now=None):
+    t = cfg.get("timing")
+    if not t or not t.get("journal"):
+        return None
+    now = now or dt.datetime.now(dt.timezone.utc)
+    try:
+        with open(rel(repo, t["journal"]), errors="replace") as fh:
+            by_wave = phase_intervals(fh)
+    except OSError:
+        return {"error": f'journal not readable: {t["journal"]}', "order": [], "waves": []}
+    keep = int(t.get("max", cfg.get("history", {}).get("max", 30)))
+    waves = []
+    for wave in sorted(by_wave)[-keep:]:
+        iv = by_wave[wave]
+        is_current = wave == current
+        closed_ends = [e for _, _, _, e in iv if e]
+        # A past wave's unclosed phase is clipped at the wave's last recorded
+        # moment, not stretched to now; only the current wave runs to the present.
+        until = now if is_current else max(closed_ends + [s for _, _, s, _ in iv])
+        span, mins = attribute(iv, until)
+        lanes = {}
+        for p, lane, s, e in iv:
+            if p == "build" and lane:
+                lanes[lane] = lanes.get(lane, 0.0) + ((e or until) - s).total_seconds() / 60
+        slowest = max(lanes.items(), key=lambda kv: kv[1]) if lanes else None
+        open_now = sorted({p + ("/" + lane if lane else "") for p, lane, _, e in iv if e is None})
+        waves.append({"wave": wave, "current": is_current, "span_min": round(span, 1),
+                      "phases": {k: round(v, 1) for k, v in mins.items()},
+                      "top": max(mins.items(), key=lambda kv: kv[1])[0] if mins else None,
+                      "slowest_build": ({"lane": slowest[0], "min": round(slowest[1], 1)}
+                                        if slowest else None),
+                      "open": open_now})
+    return {"order": PHASES + [UNACCOUNTED], "waves": waves}
+
+
 # ── the owner's list ────────────────────────────────────────────────────────
 def owner_list(path):
     items = []
@@ -302,6 +401,7 @@ def build(cfg, cfg_dir):
         "owner": owner_list(rel(cfg_dir, cfg.get("owner_list", "owner-list.md"))),
         "owner_name": cfg.get("owner_name", "Owner"),
         "history": history(repo, cfg),
+        "timing": timings(repo, cfg, n),
     }
 
 

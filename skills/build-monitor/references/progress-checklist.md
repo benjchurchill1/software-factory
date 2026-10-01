@@ -38,6 +38,8 @@ Paths are relative to `repo` unless absolute. `owner_list`, `out` and
 | `wave.merge_subject_regex`, `approval_regex` | How a merge commit names the lane, and how it records the monitor's approval |
 | `history.verification_regex`, `max` | Wave and attempt from a verification filename; how many waves to chart |
 | `history.record_regex` | How the trunk's record commit names a wave (`{N}`); marks the current wave recorded |
+| `timing.journal` | The build seat's `journal.jsonl`. Optional: without it, the page has no "Where the time went" section |
+| `timing.max` | How many waves to show there; defaults to `history.max` |
 
 ## How each section is derived
 
@@ -66,3 +68,21 @@ A hand-kept checklist drifts at exactly the moment it matters: mid-barrier,
 with two seats busy. This build's own rule (factory gate 8) is that state the
 loop reads is generated. The progress page is read by the owner, so the same
 rule applies.
+
+## Where the time went
+
+Derived from the `phase` events the build seat writes to its journal (the loop
+prompt's §Persistent budgets and recovery says when). Lanes run in parallel, so
+adding up phases would overcount. Instead every minute of a wave is given to
+the highest-priority phase active in that minute, in this order: `barrier`,
+`record`, `cut`, `build`, `verify`, `review_wait`, `owner_wait`, `paused`. Work outranks
+waiting: a minute counts as waiting for review, or waiting on the owner, only
+if nothing was being built or verified at the time; `paused` (a usage-window
+pause) ranks last of all. A minute with nothing
+active at all is **unaccounted**. That is usually host sleep, a stopped seat,
+or a stall nobody recorded, and it is often the largest thing to fix.
+
+Each wave's segments add up to its real wall-clock span. The current wave runs
+up to now; a past wave's unclosed phase (a crashed lane) is cut off at the
+wave's last recorded moment and listed as open. The section also names the
+slowest lane's build time and anything still open.

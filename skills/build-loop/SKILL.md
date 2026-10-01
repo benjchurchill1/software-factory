@@ -118,8 +118,8 @@ State how to start it (paste the prompt in an ultracode session, or `/loop` for
 one wave per firing), how to watch it (`loop-status.sh`, and the four signals in
 the conventions doc), and what it will produce when it finishes.
 
-Three things start with it, and each cost the source build at least one lane or
-barrier when missing:
+Four things start with it. The first three each cost the source build at
+least one lane or barrier when missing; the fourth is new in 0.3.0:
 
 - **The keep-alive Stop hook.** A loop seat ends its turn after a wave or a
   barrier and nothing re-invokes it. This plugin registers a Stop hook
@@ -144,6 +144,15 @@ barrier when missing:
   on Linux) and confirm it. Agents that die "[Request interrupted]" are checked
   against the sleep log first: at wave 109 five died in a row because the Mac
   was entering maintenance sleep.
+- **The test-freeze hook.** The plugin's PreToolUse hook
+  (`hooks/test-freeze.py`) refuses an edit to a test file that exists on the
+  trunk, and tells the seat how to supersede it instead. It is inert until the
+  repo commits `.claude/test-freeze.json` (software-factory gate 12). The
+  pre-barrier `tests` line is the guarantee; the hook saves the lane a stage.
+
+Before the first wave, the owner records the login time
+(`date -u +%FT%TZ > <run state dir>/auth-at`) unless the rig has a command that
+reports the time left, and the pre-flight runs once by hand.
 
 ## Adapting an existing loop
 
@@ -158,3 +167,9 @@ gaps, in the order they cause damage:
 3. Builders permitted to record their own verdicts.
 4. An open-ended blocked list.
 5. No stop condition for "two waves, no change".
+6. Refutations that are fixed but never become checks, so later waves repeat
+   them; or a checks list the loop can quietly shorten.
+7. One clean panel finishing a lane, with the verifier reading the builder's
+   claim before forming its own view.
+8. No pre-flight: a login that expires or a usage window that runs out is
+   found mid-barrier.

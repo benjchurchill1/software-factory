@@ -10,8 +10,9 @@ the project cannot suffer the failure.
 - [Role](#role) · [Ground truth](#ground-truth) · [Integrity rules](#integrity-rules)
 - [Definition of done](#definition-of-done) · [The closed blocked list](#the-closed-blocked-list)
 - [The wave](#the-wave) · [The barrier](#the-barrier) · [Adversarial verify](#adversarial-verify)
+- [Clean rounds](#clean-rounds) · [Lessons become checks](#lessons-become-checks)
 - [Shared-state law](#shared-state-law) · [Contention is not refutation](#contention-is-not-refutation)
-- [Anti-spin](#anti-spin) · [Tone of the record](#tone-of-the-record)
+- [Pre-flight](#pre-flight) · [Anti-spin](#anti-spin) · [Tone of the record](#tone-of-the-record)
 
 ---
 
@@ -131,6 +132,48 @@ catches less than diversity does.
 
 Two verifier failures on a row make it stuck. One makes it in-progress again.
 
+## Clean rounds
+
+**Defends against:** one panel's blind spot deciding that a lane is finished.
+
+A single clean panel says the lens it ran found nothing. Requiring several clean
+rounds in a row, each a fresh panel that has not seen the others' findings, at
+the same lane commit, says that independent attempts found nothing on the code
+that will actually merge. Any commit resets the count, because a round describes
+the tree it read. The default is two: the second fresh look catches most of what
+the first misses, and a third mostly adds time. Rounds work alongside the stage
+cap rather than against it: the cap counts builds, rounds count panels, a
+refuted round ends the stage, and no more than the required number run per
+stage, so a lane runs at most three builds and a bounded number of panels.
+
+**The verifier forms its view before it reads the claim.** Handed the builder's
+self-report first, a verifier checks what the builder says it did and inherits
+the builder's frame; the defect is usually in what the builder did not think
+of. So the lens gets the criterion, the diff and the relevant checks, writes a
+prediction of where the change would break, and only then reads the claim, to
+test it. The prediction in the record is what makes that ordering checkable by
+the monitor seat.
+
+## Lessons become checks
+
+**Defends against:** a loop that learns nothing, and a loop that learns wrong.
+
+A refutation that is only fixed teaches the lane that took it. Written as a
+check (the failure class, the lens it belongs to, and a script where one fits),
+it binds every later wave, so the verification gets stricter as the build goes
+on even with nobody reviewing it. That only holds if the ledger can't quietly
+get looser: it is append-only, and a check leaves it only through a ruling that
+names it, made by someone other than the loop. The pre-barrier script enforces
+both.
+
+The filter on the way in matters as much as the ratchet. A contention red
+admitted as a check would become a permanent false refutation, which is the
+failure §Contention is not refutation exists to prevent, now made durable. So
+an entry is admitted only after the row was re-run alone. Pairs of rows whose
+lanes collided at a barrier are the same kind of lesson, kept in a
+never-together ledger under the same rules. The cost is that panels slow as the
+ledger grows; "Where the time went" shows it under verify.
+
 ## Shared-state law
 
 **Defends against:** parallelism that is real for records and imaginary for the
@@ -171,6 +214,20 @@ Two defences, both required:
 - **A verdict rule**: before returning a failure from a suite that touches the
   shared resource, check for contention, re-run the row alone, and record that
   the check happened.
+
+## Pre-flight
+
+**Defends against:** the four things no lane can fix, found at the worst time.
+
+A login that expires, a usage window that runs out, a disk that fills and a host
+that reboots all surface as failures in whatever step was running, often the
+barrier. One command at wave open and before each barrier attempt measures all
+four and decides: go, fix, pause, stop, or recover. The login needs a person, so
+it stops the loop while there is still time to stop cleanly. The usage window
+comes back by itself, so it pauses the loop until the reset time instead of
+ending an overnight run. A reboot means the recovery protocol runs before
+anything else. The same command checks the generated files for unreplaced slots,
+so a half-filled config is found at wave open, not mid-barrier.
 
 ## Anti-spin
 

@@ -8,6 +8,8 @@
   --ground:#F3F5F2; --surface:#FFFFFF; --ink:#18201C; --muted:#5A655F; --rule:#DAE0DB; --soft:#EAEEEA;
   --accent:#2B5C8A; --good:#2E7A4A; --warn:#9C6410; --bad:#B03A2B; --run:#2B5C8A;
   --good-bg:#E3F1E8; --warn-bg:#F7ECD9; --bad-bg:#F8E3DF; --run-bg:#E1EAF3;
+  --ph-barrier:#6B4C9A; --ph-record:#56647A; --ph-cut:#7D8450; --ph-build:#2B5C8A; --ph-verify:#2F8080;
+  --ph-review_wait:#B7832A; --ph-owner_wait:#B03A2B; --ph-paused:#8A7F6E; --ph-unaccounted:#B9C1BC;
   --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -18,6 +20,8 @@
     --ground:#0F1412; --surface:#161C19; --ink:#E3E9E5; --muted:#94A19A; --rule:#27312C; --soft:#1D2521;
     --accent:#89B2DB; --good:#6FC08D; --warn:#DFA54B; --bad:#EF7E6A; --run:#89B2DB;
     --good-bg:#17291F; --warn-bg:#2C2214; --bad-bg:#2E1A16; --run-bg:#172433;
+    --ph-barrier:#B39DDB; --ph-record:#9AA8BF; --ph-cut:#BFC68A; --ph-build:#89B2DB; --ph-verify:#78C2C2;
+    --ph-review_wait:#E2B062; --ph-owner_wait:#EF7E6A; --ph-paused:#B5AA98; --ph-unaccounted:#46504A;
   }
 }
 :root[data-theme="dark"]{
@@ -25,10 +29,12 @@
   --ground:#0F1412; --surface:#161C19; --ink:#E3E9E5; --muted:#94A19A; --rule:#27312C; --soft:#1D2521;
   --accent:#89B2DB; --good:#6FC08D; --warn:#DFA54B; --bad:#EF7E6A; --run:#89B2DB;
   --good-bg:#17291F; --warn-bg:#2C2214; --bad-bg:#2E1A16; --run-bg:#172433;
+    --ph-barrier:#B39DDB; --ph-record:#9AA8BF; --ph-cut:#BFC68A; --ph-build:#89B2DB; --ph-verify:#78C2C2;
+    --ph-review_wait:#E2B062; --ph-owner_wait:#EF7E6A; --ph-paused:#B5AA98; --ph-unaccounted:#46504A;
 }
 *{box-sizing:border-box}
 body{background:var(--ground);color:var(--ink);font:15px/1.5 var(--sans);padding-inline:16px;padding-block:24px 48px}
-.wrap{max-width:1080px;margin:0 auto;display:grid;gap:28px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
 h1,h2{font-family:var(--cond);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.005em}
 h1{font-size:28px;line-height:1.15}
 h2{font-size:19px}
@@ -42,7 +48,7 @@ header{display:grid;gap:10px}
 .pill.good{background:var(--good-bg);color:var(--good)} .pill.bad{background:var(--bad-bg);color:var(--bad)}
 .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.run{background:var(--run-bg);color:var(--run)}
 .pill.plain::before{display:none}
-section{display:grid;gap:12px}
+section{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px}
 .sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
 
@@ -83,6 +89,18 @@ td.c{text-align:center}
 .owner li{grid-template-columns:24px 1fr;column-gap:12px}
 .owner .why{grid-column:2}
 .owner li.isdone .name{text-decoration:line-through;color:var(--muted)}
+
+/* where the time went */
+.tw{padding:16px;display:grid;gap:14px}
+.tw .lead{font-size:14px}
+.stack{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--soft)}
+.stack i{display:block;height:100%}
+.stack i.unaccounted{background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(0,0,0,.12) 3px 6px)}
+.twlegend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.twlegend b{font:500 12.5px var(--mono);color:var(--ink);font-weight:500}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.twrows{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;font:12px var(--mono);color:var(--muted)}
+.twrows .stack{height:10px}
 
 /* history */
 .chart{padding:16px}
@@ -175,6 +193,30 @@ function render(){
     <section><div class="sechead"><h2>Next wave queue</h2><span class="eyebrow">${w ? 'wave ' + (w.n + 1) : ''}</span></div><ul class="list panel">${q}</ul></section>
     <section><div class="sechead"><h2>Waiting on ${esc(D.owner_name)}</h2><span class="eyebrow">${open} open</span></div><ul class="list owner panel">${owner}</ul></section>
   </div>`));
+
+  // where the time went
+  const T = D.timing;
+  if (T && T.error){
+    app.append($(`<section><div class="sechead"><h2>Where the time went</h2></div><div class="panel"><div class="tw muted">${esc(T.error)}</div></div></section>`));
+  } else if (T && T.waves.length){
+    const NAMES = {barrier:'barrier', record:'record', cut:'cutting lanes', build:'building', verify:'verify panels',
+                   review_wait:'waiting for review', owner_wait:`waiting on ${D.owner_name}`, paused:'paused (usage limit)', unaccounted:'unaccounted'};
+    const dur = (m) => m < 90 ? `${Math.round(m)} min` : `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')}`;
+    const stack = (w) => `<div class="stack" role="img" aria-label="wave ${w.wave}: ${T.order.filter(k => w.phases[k]).map(k => NAMES[k] + ' ' + dur(w.phases[k])).join(', ')}">${
+      T.order.filter(k => w.phases[k]).map(k => `<i class="${k}" style="width:${(100 * w.phases[k] / w.span_min).toFixed(2)}%;background-color:var(--ph-${k})" title="${esc(NAMES[k])}: ${dur(w.phases[k])}"></i>`).join('')}</div>`;
+    const W0 = T.waves.find(w => w.current) || T.waves[T.waves.length - 1];
+    const topShare = W0.top ? Math.round(100 * W0.phases[W0.top] / W0.span_min) : 0;
+    const lead = W0.top
+      ? `Wave ${W0.wave}${W0.current ? ' so far' : ''}: ${dur(W0.span_min)}, of which <b>${esc(NAMES[W0.top])}</b> took ${dur(W0.phases[W0.top])} (${topShare}%).`
+        + (W0.slowest_build ? ` Slowest build: ${esc(W0.slowest_build.lane)}, ${dur(W0.slowest_build.min)}.` : '')
+        + (W0.open.length ? ` Still open: ${W0.open.map(esc).join(', ')}.` : '')
+      : `Wave ${W0.wave}: no phases recorded yet.`;
+    const legend = T.order.filter(k => W0.phases[k]).map(k => `<span><span class="sw" style="background:var(--ph-${k})"></span>${esc(NAMES[k])} <b>${dur(W0.phases[k])}</b></span>`).join('');
+    const recent = T.waves.slice(-12).reverse().map(w => `<span>w${w.wave}</span>${stack(w)}<span>${dur(w.span_min)}</span>`).join('');
+    app.append($(`<section><div class="sechead"><h2>Where the time went</h2><span class="eyebrow">each minute goes to the busiest phase active in it</span></div>
+      <div class="panel"><div class="tw"><div class="lead">${lead}</div>${stack(W0)}<div class="twlegend">${legend}</div>
+      ${T.waves.length > 1 ? `<div class="twrows">${recent}</div>` : ''}</div></div></section>`));
+  }
 
   // history
   const H = D.history;
