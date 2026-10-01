@@ -1,0 +1,243 @@
+<meta charset="utf-8">
+<title>__TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: summary strip, then status panels, then a six-column board read left to right (backlog to done). */
+:root {
+  --bg: #f3f5f4; --surface: #ffffff; --sunk: #e7ecea; --line: #d3dbd8;
+  --fg: #1c2624; --muted: #5d6b67; --accent: #1f6f66; --accent-soft: #d6ebe7;
+  --ok: #2f7a3e; --ok-soft: #dcefdf; --warn: #94600a; --warn-soft: #f6ead2;
+  --bad: #a3392f; --bad-soft: #f6dedb; --lane: #4a4f8a; --lane-soft: #e3e4f4;
+  --display: "Fraunces", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121817; --surface: #1a2220; --sunk: #222c2a; --line: #2f3b38;
+  --fg: #e3ebe8; --muted: #9aaaa5; --accent: #6cc3b6; --accent-soft: #1f3a36;
+  --ok: #7cc68a; --ok-soft: #1f3524; --warn: #e2b25c; --warn-soft: #3a2e17;
+  --bad: #ec8a80; --bad-soft: #3d2220; --lane: #a9aeee; --lane-soft: #2a2c48; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121817; --surface: #1a2220; --sunk: #222c2a; --line: #2f3b38;
+  --fg: #e3ebe8; --muted: #9aaaa5; --accent: #6cc3b6; --accent-soft: #1f3a36;
+  --ok: #7cc68a; --ok-soft: #1f3524; --warn: #e2b25c; --warn-soft: #3a2e17;
+  --bad: #ec8a80; --bad-soft: #3d2220; --lane: #a9aeee; --lane-soft: #2a2c48; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.wrap { padding-block: 24px 40px; padding-inline: 16px; max-width: 1500px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 1.9rem; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 0; color: var(--muted); }
+.mono, .rid { font-family: var(--mono); font-size: 0.8rem; }
+.muted { color: var(--muted); }
+.top { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: end; justify-content: space-between; }
+.top .sub { color: var(--muted); margin: 4px 0 0; }
+.score { display: grid; gap: 6px; min-width: min(320px, 100%); }
+.score .big { font-family: var(--display); font-size: 2.2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.score .big small { font-family: var(--body); font-size: 0.95rem; color: var(--muted); }
+.bar { height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.9rem; color: var(--muted); }
+.facts b { color: var(--fg); font-weight: 700; }
+.pill { display: inline-block; padding: 1px 10px; border-radius: 999px; font-weight: 700; font-size: 0.82rem; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; display: grid; gap: 10px; align-content: start; }
+.panel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.steps li { padding-left: 22px; position: relative; }
+.steps li::before { position: absolute; left: 0; top: 0; width: 16px; text-align: center; }
+.steps .s-done { color: var(--muted); } .steps .s-done::before { content: "✓"; color: var(--ok); }
+.steps .s-now { font-weight: 700; } .steps .s-now::before { content: "●"; color: var(--accent); }
+.steps .s-todo::before { content: "○"; color: var(--muted); }
+.owner li { padding: 8px 10px; background: var(--warn-soft); border-radius: 6px; }
+.owner li.muted { background: var(--sunk); }
+.areas { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 20px; }
+.area-row { all: unset; cursor: pointer; display: grid; grid-template-columns: 9.5em 1fr 3.2em; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 6px; font-size: 0.88rem; }
+.area-row:hover { background: var(--sunk); }
+.area-row:focus-visible { outline: 2px solid var(--accent); }
+.area-row[aria-pressed="true"] { background: var(--accent-soft); }
+.area-row .track { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.area-row .fill { display: block; height: 100%; background: var(--accent); }
+.area-row .ac { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.filter-note { font-size: 0.85rem; color: var(--muted); }
+.board-scroll { overflow-x: auto; padding-bottom: 8px; }
+.board { display: grid; grid-template-columns: repeat(6, minmax(210px, 1fr)); gap: 12px; }
+.col { background: var(--sunk); border-radius: 10px; padding: 10px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.col-head { display: flex; justify-content: space-between; align-items: center; }
+.col-head h2 { color: var(--fg); }
+.count { font-family: var(--mono); font-size: 0.8rem; background: var(--surface); border-radius: 999px; padding: 0 8px; }
+.hint { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.col-wave { background: var(--accent-soft); }
+.col-done .card { border-left-color: var(--ok); }
+.col-rework .card { border-left-color: var(--bad); }
+.col-wave .card { border-left-color: var(--accent); }
+.col-next .card { border-left-color: var(--lane); }
+.col-parked .card { border-left-color: var(--warn); }
+.cards { display: grid; gap: 8px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.card header { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.card p { margin: 6px 0 0; font-size: 0.86rem; overflow-wrap: anywhere; }
+.chip { font-size: 0.72rem; padding: 0 7px; border-radius: 999px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.lane { background: var(--lane-soft); color: var(--lane); font-family: var(--mono); }
+.chip.parked { background: var(--warn-soft); color: var(--warn); }
+.empty { color: var(--muted); font-size: 0.85rem; margin: 4px 0; }
+.card[hidden] { display: none; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tile { display: grid; gap: 2px; align-content: start; padding: 10px 12px; background: var(--sunk); border-radius: 8px; min-width: 0; }
+.tl { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.tv { font-family: var(--display); font-size: 1.6rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.ts { font-size: 0.82rem; color: var(--muted); }
+.tbar { height: 5px; background: var(--surface); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.tbar span, .mini span { display: block; height: 100%; background: var(--accent); }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+.num { text-align: right; }
+.mini { display: inline-block; width: 60px; height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; margin-right: 8px; vertical-align: middle; }
+.empty-page { color: var(--muted); }
+.road { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.road li { display: flex; gap: 8px; align-items: baseline; }
+.road .mark { width: 16px; text-align: center; color: var(--muted); }
+.road .on { color: var(--ok); }
+footer { font-size: 0.82rem; color: var(--muted); }
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+const D = /*__DATA__*/null;
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const age = (iso) => {
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (isNaN(m)) return '';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `${h} h ${String(m % 60).padStart(2, '0')} min ago` : `${Math.floor(h / 24)} d ${h % 24} h ago`;
+};
+const big = (v, unit) => v == null ? '–' : unit === 'tokens' || v >= 1e5 ? `${(v / 1e6).toFixed(1)}M` : Number(v).toLocaleString();
+const hrs = (h) => h == null ? '–' : `${Math.floor(h)}h ${String(Math.round(h % 1 * 60)).padStart(2, '0')}m`;
+const when = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString(undefined, {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'}) + ' UTC'; };
+const short = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + '…'; };
+
+function render() {
+  const app = document.getElementById('app');
+  if (!D || !D.board) { app.innerHTML = '<p class="empty-page">No board data embedded. Run progress.py with --view kanban to generate this page.</p>'; return; }
+  const B = D.board, R = D.run, S = D.status, W = D.wave;
+  const rows = B.rows, total = rows.length, done = rows.filter(r => r.column === 'done').length;
+  const pct = total ? Math.round(100 * done / total) : 0;
+  const areaName = Object.fromEntries(B.areas.map(a => [a.code, a.name]));
+
+  // Health: say what presence looks like first. Presence is the build seat's
+  // checklist moving within 90 minutes, or, without one, a barrier running.
+  let health = 'Running', hcls = 'ok';
+  const steps = S ? S.steps : [];
+  const now = steps.find(s => s.state === 'now');
+  if (S && S.at && Date.now() - Date.parse(S.at) > 90 * 60000) { health = 'Quiet: no build update for ' + age(S.at).replace(' ago', ''); hcls = 'warn'; }
+  if (steps.length && steps.every(s => s.state === 'done')) { health = 'Paused between waves'; hcls = 'warn'; }
+  const lastB = W && W.barrier.length ? W.barrier[W.barrier.length - 1] : null;
+  if (lastB && lastB.state === 'red') { health = `Barrier ${W.n}-${lastB.attempt} red`; hcls = 'bad'; }
+  const [pushAt, pushSubj] = String(D.last_push || '').split('\t');
+
+  let h = `<div class="top"><div><h1>${esc(D.project)}</h1>
+      <p class="sub">The ${total} register rows, placed by where the build loop has them. Updated ${esc(when(D.generated.replace(/Z$/, ':00Z')))}.</p></div>
+    <div class="score"><div class="big">${done} <small>of ${total} rows done (${pct}%)</small></div>
+      <div class="bar"><span style="width:${pct}%"></span></div></div></div>
+    <div class="facts"><span>Health <span class="pill ${hcls}">${esc(health)}</span></span>
+      ${W ? `<span>Wave <b>${W.n}</b></span>` : ''}
+      ${now ? `<span>Now: <b>${esc(now.text)}</b></span>` : ''}
+      <span>Last push to ${esc(D.trunk)}: ${pushAt ? `${esc(age(pushAt))}: “${esc(short(pushSubj, 70))}”` : 'unknown'}</span></div>`;
+
+  // The run
+  if (R && R.error) h += `<section class="panel"><h2>The run</h2><p class="muted">${esc(R.error)}</p></section>`;
+  else if (R) {
+    const u = R.unit || 'tokens', P = R.per_wave || {};
+    const tiles = [
+      ['Spent', big(R.spent, u), R.limit ? `of ${big(R.limit, u)} ${esc(u)} (${Math.round(100 * R.spent / R.limit)}%)` : esc(u), R.limit ? 100 * R.spent / R.limit : null],
+      ['Time elapsed', hrs(R.elapsed_hours), R.no_time_limit || !R.deadline ? 'no end time: runs until finished' : `ends ${esc(when(R.deadline))}`,
+        !R.no_time_limit && R.deadline && R.elapsed_hours != null ? 100 * R.elapsed_hours / ((Date.parse(R.deadline) - Date.parse(R.started_at)) / 3.6e6) : null],
+      ['Waves recorded', String(R.waves.length), R.started_at ? `since ${esc(when(R.started_at))}` : '', null],
+      ['Per wave', P.spent != null ? big(P.spent, u) : '–', `${P.hours != null ? hrs(P.hours) + ', ' : ''}${P.done != null ? '+' + P.done + ' rows done' : ''}`, null],
+    ];
+    if (R.projection) tiles.push(['Projection', `~${R.projection.done} of ${total}`,
+      `when ${R.projection.bound_by === 'budget' ? 'the budget' : 'the clock'} runs out, about ${R.projection.waves_more} more waves`, null]);
+    if (R.to_finish) tiles.push(['To finish all', `~${Math.ceil(R.to_finish.waves)} waves`,
+      [R.to_finish.spent != null ? `~${big(R.to_finish.spent, u)} ${esc(u)}` : '', R.to_finish.hours != null ? `~${(R.to_finish.hours / 24).toFixed(1)} days` : ''].filter(Boolean).join(', ') + ' at the current pace', null]);
+    const tl = tiles.map(([l, v, s, p]) => `<div class="tile"><span class="tl">${l}</span><span class="tv">${v}</span><span class="ts">${s}</span>${p != null ? `<div class="tbar"><span style="width:${Math.min(100, p).toFixed(0)}%"></span></div>` : ''}</div>`).join('');
+    const maxS = Math.max(1, ...R.waves.map(w => w.spent || 0));
+    const tr = R.waves.map(w => `<tr><td>${esc(w.wave)}</td><td>${esc(w.started ? when(w.started) : '')}</td><td class="num">${w.hours != null ? hrs(w.hours) : '–'}</td>
+      <td class="num"><span class="mini"><span style="width:${(100 * (w.spent || 0) / maxS).toFixed(0)}%"></span></span>${big(w.spent, u)}</td>
+      <td class="num">${w.new != null ? '+' + w.new : '–'}</td><td class="num">${w.done != null ? w.done : '–'}</td></tr>`).join('');
+    h += `<section class="panel"><h2>The run</h2><div class="tiles">${tl}</div>
+      ${R.waves.length ? `<div class="tbl"><table><thead><tr><th>Wave</th><th>Started</th><th class="num">Took</th><th class="num">Spent</th><th class="num">New done</th><th class="num">Total done</th></tr></thead><tbody>${tr}</tbody></table></div>` : ''}
+      <p class="ts">Spend is what the checkpoint records, in ${esc(u)}${u === 'tokens' ? '; it carries no money figure' : ''}.${R.note ? ' ' + esc(R.note) : ''}</p></section>`;
+  }
+
+  // Panels
+  const stepHtml = steps.length ? steps.map(s => `<li class="s-${s.state === 'done' ? 'done' : s.state === 'now' ? 'now' : 'todo'}">${esc(s.text)}</li>`).join('')
+    : (D.done || []).map(x => `<li class="s-${x.done ? 'done' : 'todo'}">${esc(x.label)}${x.value != null && x.target != null ? ` (${x.value}/${x.target})` : ''}</li>`).join('');
+  const laneHtml = B.lanes.length ? B.lanes.map(l => `<li><span class="mono">${esc(l.lane)}</span> <span class="chip ${l.carried ? 'bad' : 'lane'}">${l.carried ? 'Refuted, carried' : 'In wave'}</span> <span class="muted">${esc(l.rows.join(', '))}</span></li>`).join('')
+    : '<li class="muted">No lanes cut yet.</li>';
+  const open = (D.owner || []).filter(i => !i.done);
+  const ownerHtml = open.length ? open.map(i => `<li>${esc(i.item)}${i.detail ? `: ${esc(i.detail)}` : ''}</li>`).join('') : `<li class="muted">Nothing is waiting on ${esc(D.owner_name)}.</li>`;
+  h += `<div class="panels">
+    <section class="panel"><h2>${esc(S ? S.head : 'Road to done')}</h2><ul class="steps">${stepHtml}</ul></section>
+    <section class="panel"><h2>Lanes${W ? ' in wave ' + W.n : ''}</h2><ul>${laneHtml}</ul></section>
+    <section class="panel"><h2>Waiting on ${esc(D.owner_name)}</h2><ul class="owner">${ownerHtml}</ul></section></div>`;
+
+  // Modules
+  h += `<section class="panel"><h2>By module</h2><div class="areas">${B.areas.map(a =>
+    `<button class="area-row" type="button" data-area="${esc(a.code)}" aria-pressed="false"><span class="an">${esc(a.name)}</span><span class="track"><span class="fill" style="width:${(100 * a.done / a.total).toFixed(0)}%"></span></span><span class="ac">${a.done}/${a.total}</span></button>`).join('')}</div>
+    <p class="filter-note" id="filter-note"></p></section>`;
+
+  // Board
+  const COLS = {
+    backlog: ['Backlog', 'Not yet planned into a wave'],
+    next: ['Next wave', 'Queued for the wave after this one'],
+    wave: ['This wave', 'Being built, merged or checked now'],
+    rework: ['Rework', 'Failed verification or stuck; goes back into a lane'],
+    parked: [B.parked_label, B.parked_hint],
+    done: ['Done', 'Passed independent verification'],
+  };
+  const card = (r, col) => {
+    const chips = [`<span class="chip">${esc(areaName[r.area] || r.area)}</span>`];
+    if (r.parked) chips.push(`<span class="chip parked">${esc(r.tag)}</span>`);
+    if (r.lane && (col === 'wave' || col === 'next')) chips.push(`<span class="chip lane">${esc(r.lane)}</span>`);
+    if (r.carried) chips.push('<span class="chip bad" title="The lane was refuted and carried to the next wave">Refuted, carried</span>');
+    if (r.stuck) chips.push('<span class="chip bad">Stuck</span>');
+    if (col === 'done' && r.wave) chips.push(`<span class="chip ok">Wave ${esc(r.wave)}</span>`);
+    else if (col !== 'done' && /^(WIP|FAIL)/i.test(r.verdict)) chips.push('<span class="chip warn">Failed verify</span>');
+    const text = r.title || r.note;
+    return `<article class="card" data-area="${esc(r.area)}"><header><span class="rid">${esc(r.id)}</span>${chips.join('')}</header>${text ? `<p>${esc(short(text, 150))}</p>` : ''}</article>`;
+  };
+  h += `<div class="board-scroll"><div class="board">${B.columns.map(c => {
+    let items = rows.filter(r => r.column === c);
+    if (c === 'done') items = items.slice().sort((a, b) => (parseInt(b.wave) || 0) - (parseInt(a.wave) || 0));
+    return `<section class="col col-${c}" aria-label="${esc(COLS[c][0])}"><div class="col-head"><h2>${esc(COLS[c][0])}</h2><span class="count">${items.length}</span></div>
+      <p class="hint">${esc(COLS[c][1])}</p><div class="cards">${items.map(r => card(r, c)).join('') || '<p class="empty">Nothing here.</p>'}</div></section>`;
+  }).join('')}</div></div>
+  <footer>Generated from the build's own record (scoreboard, wave queues, lane ledger, checkpoint) on ${esc(D.trunk)}. Nothing here is typed by hand except the owner's list. Only independent verification moves a card to Done.</footer>`;
+  app.innerHTML = h;
+
+  // Module filter, remembered per viewer.
+  const key = 'kanban-area:' + D.project;
+  let active = null;
+  const btns = app.querySelectorAll('.area-row');
+  const apply = () => {
+    app.querySelectorAll('.card').forEach(c => { c.hidden = !!active && c.dataset.area !== active; });
+    btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.area === active)));
+    app.querySelectorAll('.col').forEach(col => { col.querySelector('.count').textContent = col.querySelectorAll('.card:not([hidden])').length; });
+    document.getElementById('filter-note').textContent = active ? 'Showing one module. Pick it again to show everything.' : 'Pick a module to show only its cards on the board.';
+    try { localStorage.setItem(key, active || ''); } catch (e) {}
+  };
+  btns.forEach(b => b.addEventListener('click', () => { active = active === b.dataset.area ? null : b.dataset.area; apply(); }));
+  try { active = localStorage.getItem(key) || null; } catch (e) {}
+  if (active && !B.areas.some(a => a.code === active)) active = null;
+  apply();
+}
+render();
+</script>

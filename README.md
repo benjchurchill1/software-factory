@@ -14,7 +14,7 @@ can't see.
 | --- | --- | --- |
 | `software-factory` | Once, before the build; again if a running build stalls on its environment | Quality-tests the requirements register and the definition of done, then primes thirteen gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter. Then invokes `build-loop`. |
 | `build-loop` | Once, at the end of priming; again to fix the loop prompt's logic | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by adversarial verify panels until two rounds in a row come back clean at the same commit (up to three build stages inside the wave), and then one serial barrier. Every refutation that stands becomes a check later waves apply. Five gate counts ratchet: none may rise. |
-| `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated **progress checklist**: road to done, the current wave lane by lane, the next queue, what waits on you, where each wave's time went, and history. |
+| `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated progress page: a **Kanban board** of every register row with the run's spend, clock and projection, or a **checklist** of road to done, the current wave lane by lane, the next queue, what waits on you, where each wave's time went, and history. |
 
 The plugin also registers two hooks, each inert until you set it up for a repo:
 a **keep-alive Stop hook** for the build seat, and a **test-freeze hook** that
@@ -92,7 +92,7 @@ build.
 2. It finishes by running `build-loop`, which writes the loop prompt.
 3. Arm the keep-alive hook (below), then start the build seat with that prompt.
 4. In a second session, run `/build-monitor`. It finds the build seat, writes a
-   progress config beside the repo, and generates the checklist page after
+   progress config beside the repo, and generates the progress page after
    every wave.
 
 ### The keep-alive hook

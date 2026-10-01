@@ -1056,6 +1056,96 @@ class PausedPhase(TimingBase):
         self.assertEqual(self.p.PHASES[-1], "paused")
 
 
+class KanbanBoard(TimingBase):
+    """progress.py's kanban view: row ids in queues, column placement, the run."""
+
+    def git(self, *args, at="2026-09-30T03:00:00Z"):
+        env = {**os.environ, "GIT_COMMITTER_DATE": at, "GIT_AUTHOR_DATE": at}
+        subprocess.run(["git", "-C", str(self.repo), *args], check=True, capture_output=True, env=env)
+
+    def put(self, rel_path, text):
+        path = self.repo / rel_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+    def checkpoint(self, wave, phase, spent, wave_spent, msg):
+        self.put("run/checkpoint.json", json.dumps({"wave_phase": phase, "budget": {
+            "unit": "tokens", "spent": spent, "total_limit": 100, "started_at": "2026-09-30T00:00:00Z",
+            "deadline": "2026-10-02T00:00:00Z",
+            "wave": {"id": wave, "spent": wave_spent, "started_at": f"2026-09-30T0{wave}:00:00Z"}}}))
+        self.git("add", "-A")
+        self.git("commit", "-qm", msg)
+
+    def setUp(self):
+        super().setUp()
+        self.repo = Path(self.temp.name) / "repo"
+        self.repo.mkdir()
+        self.git("init", "-qb", "trunk")
+        self.git("config", "user.email", "t@example.com")
+        self.git("config", "user.name", "t")
+        self.board = ("| ID | Tag | Verdict | Note |\n| --- | --- | --- | --- |\n"
+                      "| SES-01 | R1 | PASS | done |\n| SES-02 | R1 | TODO | |\n| SES-03 | R1 | TODO | |\n"
+                      "| SES-04 | R1 | TODO | |\n| TRI-01 | R1 | WIP | failed verify |\n"
+                      "| TRI-02 | SITE | TODO | |\n| TRI-03 | R1 | TODO | stuck: twice |\n| TRI-04 | R1 | TODO | |\n")
+        self.put("progress.md", self.board.replace("| SES-01 | R1 | PASS", "| SES-01 | R1 | TODO"))
+        self.put("conf", "WAVE=2\n")
+        self.put("ev/wave1/orchestrator/wave2-queue.md",
+                 "# Wave 2\n\n- **ses_core**: SES-02..03, and TRI-04 later\n- **tri_fix**: Rows: TRI-01\n")
+        self.put("ev/wave2/orchestrator/wave3-queue.md", "| Lane | Rows |\n| --- | --- |\n| ses_more | SES-04 |\n")
+        self.checkpoint(1, "building", 10, 10, "wave 1 open")
+        self.put("progress.md", self.board)
+        self.checkpoint(1, "recorded", 20, 20, "wave 1 record")
+        self.git("branch", "carry/w2-tri_fix")
+        self.cfg = {"repo": str(self.repo), "trunk": "trunk", "view": "kanban",
+                    "scoreboard": {"path": "progress.md", "id_regex": r"^[A-Z]+-\d+$", "verdict_column": 3},
+                    "board": {"columns": {"tag": 2, "note": 4}, "parked_tags": ["SITE"],
+                              "carry_branch": "carry/w{N}-{lane}", "areas": {"SES": "Sessions"}},
+                    "wave": {"conf": "conf", "evidence_dir": "ev/wave{N}", "integration_branch": "w{N}/int",
+                             "lane_branch": "w{N}/{lane}", "verification_glob": "ev/wave{N}/v-*.txt"},
+                    "history": {"record_regex": "^wave {N} record"},
+                    "run": {"checkpoint": "run/checkpoint.json"}}
+
+    def test_ids_in_prose_expand_and_only_known_ids_count(self):
+        known = {"SES-05", "SES-06", "SES-07", "TRI-01", "TRI-02", "TRI-03", "TRI-04", "DEC-07", "SES-03"}
+        self.assertEqual(self.p.expand_ids("SES-05, 06, 07 and TRI-01..04", known),
+                         ["SES-05", "SES-06", "SES-07", "TRI-01", "TRI-02", "TRI-03", "TRI-04"])
+        self.assertEqual(self.p.expand_ids("DEC-07, SES-03; wave 2, 10 lanes; XYZ-01", known), ["DEC-07", "SES-03"])
+
+    def test_every_row_lands_in_one_column(self):
+        data = self.p.build(self.cfg, self.temp.name, "kanban")
+        col = {r["id"]: r["column"] for r in data["board"]["rows"]}
+        self.assertEqual(col, {"SES-01": "done", "SES-02": "wave", "SES-03": "wave", "TRI-04": "wave",
+                               "TRI-01": "wave", "SES-04": "next", "TRI-02": "parked",
+                               "TRI-03": "rework"})
+        lanes = {l["lane"]: l for l in data["board"]["lanes"]}
+        self.assertTrue(lanes["tri_fix"]["carried"])
+        self.assertEqual(lanes["ses_core"]["rows"], ["SES-02", "SES-03", "TRI-04"])
+        self.assertEqual(data["board"]["areas"][0], {"code": "SES", "name": "Sessions", "total": 4, "done": 1})
+
+    def test_the_run_reads_each_recorded_wave_from_checkpoint_history(self):
+        import datetime as dt
+        r = self.p.run_block(str(self.repo), self.cfg, 8, 1, now=dt.datetime(2026, 9, 30, 10, tzinfo=dt.timezone.utc))
+        self.assertEqual([(w["wave"], w["spent"], w["done"]) for w in r["waves"]], [(1, 20.0, 1)])
+        self.assertEqual((r["spent"], r["limit"], r["elapsed_hours"]), (20.0, 100.0, 10.0))
+        self.assertEqual(r["projection"]["bound_by"], "budget")
+        self.assertEqual(r["projection"]["done"], 5)          # 80 left / 20 a wave = 4 more waves, +1 row each
+        self.assertEqual(r["to_finish"]["waves"], 7.0)
+        self.cfg["run"].update(no_time_limit=True, limit_override=300)
+        r = self.p.run_block(str(self.repo), self.cfg, 8, 1)
+        self.assertEqual((r["limit"], r["deadline"], r["projection"]["done"]), (300.0, "", 8))
+
+    def test_the_page_is_written_with_the_data_embedded(self):
+        cfg_path = Path(self.temp.name) / "monitor.json"
+        cfg_path.write_text(json.dumps({**self.cfg, "out": "board.html"}))
+        out = subprocess.run([sys.executable, str(SKILL.parent / "build-monitor" / "scripts" / "progress.py"),
+                              "--config", str(cfg_path)], capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        page = (Path(self.temp.name) / "board.html").read_text()
+        self.assertNotIn("/*__DATA__*/null", page)
+        self.assertIn('"column": "parked"', page)
+        self.assertIn("<title>repo build board</title>", page)
+
+
 class HouseStyle(unittest.TestCase):
     """Prose in the plugin uses UK spelling and no em dashes.
 

@@ -2,6 +2,7 @@
   "project": "<PROJECT> v1",
   "owner_name": "<OWNER>",
   "repo": "<REPO_ABSOLUTE_PATH>",
+  "view": "kanban",
   "trunk": "<TRUNK_BRANCH>",
   "remote": "origin",
   "scoreboard": {
@@ -17,6 +18,28 @@
     ],
     "derived_rows": [],
     "done_label": "Every v1 row has a terminal verdict"
+  },
+  "board": {
+    "columns": {
+      "title": 0,
+      "tag": 2,
+      "wave": 0,
+      "note": 0
+    },
+    "areas": {},
+    "parked_tags": [],
+    "parked_label": "Parked",
+    "carry_branch": "carry/w{N}-{lane}",
+    "done_verdicts": [
+      "PASS"
+    ],
+    "rework_prefixes": [
+      "WIP",
+      "BLOCKED",
+      "DISPUTED",
+      "STUCK",
+      "FAIL"
+    ]
   },
   "gates": {
     "path": "docs/requirements/gate-baseline.json",
@@ -57,6 +80,14 @@
     "record_regex": "^wave {N} record",
     "max": 30
   },
+  "run": {
+    "checkpoint": "<RUN_STATE_DIR>/checkpoint.json",
+    "keys": {},
+    "recorded_phase": "recorded",
+    "no_time_limit": false,
+    "limit_override": 0
+  },
+  "status_file": "",
   "timing": {
     "journal": "<RUN_STATE_DIR>/journal.jsonl"
   },

@@ -2,11 +2,17 @@
 """Build progress checklist: generated, never hand-maintained.
 
 Reads a build's own record (scoreboard, gate ceilings, git, wave evidence, the
-owner's list) and writes one self-contained HTML page: road to done, the
-current wave lane by lane, the next queue, what waits on the owner, and history.
+owner's list) and writes one self-contained HTML page. Two views share the data:
 
-    python3 progress.py --config monitor.json            # writes the page
-    python3 progress.py --config monitor.json --json     # prints the data only
+- checklist: road to done, the current wave lane by lane, the next queue, what
+  waits on the owner, where the time went, and history.
+- kanban: every register row as a card in one of six columns (backlog, next
+  wave, this wave, rework, parked, done), with the run's spend, clock, wave
+  count and projection above the board.
+
+    python3 progress.py --config monitor.json                 # writes the page
+    python3 progress.py --config monitor.json --view kanban   # the board
+    python3 progress.py --config monitor.json --json          # prints the data only
 
 Read-only against the repo: it runs `git` read commands and reads files. It is
 safe while a barrier runs. Every path in the config is relative to `repo`
@@ -24,7 +30,10 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_TEMPLATE = os.path.join(HERE, "..", "assets", "progress-page.template.html")
+TEMPLATES = {
+    "checklist": os.path.join(HERE, "..", "assets", "progress-page.template.html"),
+    "kanban": os.path.join(HERE, "..", "assets", "kanban-page.template.html"),
+}
 
 
 def git(repo, *args, default=""):
@@ -351,6 +360,300 @@ def timings(repo, cfg, current, now=None):
     return {"order": PHASES + [UNACCOUNTED], "waves": waves}
 
 
+# ── the board (kanban view) ─────────────────────────────────────────────────
+# Every scoreboard row goes to exactly one column, first match wins:
+#   done     verdict in board.done_verdicts (PASS by default: only independent
+#            verification moves a card here)
+#   wave     named in the current wave's queue
+#   next     named in the next wave's queue
+#   rework   verdict starts with one of board.rework_prefixes, or the note says stuck
+#   parked   any other terminal verdict, or a tag in board.parked_tags
+#   backlog  everything else
+BOARD_COLUMNS = ["backlog", "next", "wave", "rework", "parked", "done"]
+ID_TOKEN = re.compile(r"(\.\.|–|,|&|\band\b)|\b([A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*)-(\d+)\b|\b(\d+)\b|(\S)")
+
+
+def expand_ids(text, known):
+    """Row ids named in prose, in order, keeping only ids the scoreboard has.
+
+    Understands "SES-05, 06, 07", "SES-05 and 06", "TRI-01..04" and "TRI-01–04".
+    A bare number continues the last id's prefix only straight after a separator.
+    """
+    out, pre, prev, width, sep_seen = [], None, None, 2, None
+    for m in ID_TOKEN.finditer(text):
+        sep, prefix, num, bare, other = m.groups()
+        if sep:
+            sep_seen = sep
+            continue
+        if other:
+            pre = prev = sep_seen = None
+            continue
+        if prefix:
+            pre, width, n, rng = prefix, len(num), int(num), []
+        elif bare and pre is not None and prev is not None and sep_seen:
+            n = int(bare)
+            rng = range(prev + 1, n) if sep_seen in ("..", "–") and n - prev < 100 else []
+        else:
+            pre = prev = sep_seen = None
+            continue
+        for k in [*rng, n]:
+            rid = f"{pre}-{k:0{width}d}"
+            if rid in known and rid not in out:
+                out.append(rid)
+        prev, sep_seen = n, None
+    return out
+
+
+def parse_queue_rows(path, known):
+    """{lane: [row ids]} from a wave queue: a `| lane | rows |` table, or
+    `**lane**` entries (bullets or prose sections). Ids no lane claims go to ""."""
+    try:
+        with open(path, errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        return {}
+    lanes = {}
+    for line in text.splitlines():
+        if not line.startswith("| "):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        name = cells[0].strip("`* ")
+        if len(cells) < 2 or not re.match(r"^[a-z][\w./-]*$", name):
+            continue
+        lanes[name] = expand_ids(" ".join(cells[1:]), known)
+    if not lanes:
+        parts = re.split(r"\*\*([a-z][\w./-]*)\*\*", text)
+        for name, body in zip(parts[1::2], parts[2::2]):
+            body = re.split(r"\n(?=#|\d+\. |- )", body)[0]
+            lanes.setdefault(name, [])
+            lanes[name] += [i for i in expand_ids(body, known) if i not in lanes[name]]
+    claimed = {i for ids in lanes.values() for i in ids}
+    rest = [i for i in expand_ids(text, known) if i not in claimed]
+    if rest:
+        lanes[""] = rest
+    return lanes
+
+
+def board_rows(text, sb, bcfg):
+    """Scoreboard rows with the extra columns the board shows (1-based, optional)."""
+    cols = bcfg.get("columns", {})
+    vcol = sb.get("verdict_column", 3)
+    rows = []
+    for line in text.splitlines():
+        if not line.startswith(sb.get("row_prefix", "| ")):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < vcol or not re.match(sb.get("id_regex", r"^[A-Z]+-[A-Z]+-\d+"), cells[0]):
+            continue
+        get = lambda k: cells[cols[k] - 1] if cols.get(k) and len(cells) >= cols[k] else ""
+        rows.append({"id": cells[0], "verdict": cells[vcol - 1], "title": get("title"),
+                     "note": get("note"), "tag": get("tag"), "wave": get("wave")})
+    return rows
+
+
+def carried_lanes(repo, pattern, n):
+    """Lanes whose branch was carried to the next wave (refuted, kept for rework)."""
+    if not pattern:
+        return []
+    head, _, tail = fmt(pattern, N=n).partition("{lane}")
+    rx = re.compile("(?:^|/)" + re.escape(head) + "(.+)" + re.escape(tail) + "$")
+    out = []
+    for ref in git(repo, "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes").split():
+        m = rx.search(ref)
+        if m and m.group(1) not in out:
+            out.append(m.group(1))
+    return out
+
+
+def board(repo, cfg, n, wave):
+    sb, b, w = cfg["scoreboard"], cfg.get("board", {}), cfg["wave"]
+    with open(rel(repo, sb["path"]), errors="replace") as fh:
+        rows = board_rows(fh.read(), sb, b)
+    known = {r["id"] for r in rows}
+    qpattern = w.get("queue_file", "orchestrator/wave{N1}-queue.md")
+    cur_q = parse_queue_rows(os.path.join(rel(repo, fmt(w["evidence_dir"], N=n - 1)),
+                                          fmt(qpattern, N=n - 1, N1=n)), known) if n else {}
+    nxt_q = parse_queue_rows(os.path.join(rel(repo, fmt(w["evidence_dir"], N=n)),
+                                          fmt(qpattern, N=n, N1=n + 1)), known) if n else {}
+    in_wave, in_next = {}, {}
+    for lane, ids in cur_q.items():
+        for i in ids:
+            in_wave.setdefault(i, lane)
+    for lane, ids in nxt_q.items():
+        for i in ids:
+            in_next.setdefault(i, lane)
+    carried = carried_lanes(repo, b.get("carry_branch", ""), n) if n else []
+    done_v = {v.upper() for v in b.get("done_verdicts", ["PASS"])}
+    terminal = {v.upper() for v in sb.get("terminal", ["PASS"])}
+    rework = tuple(p.upper() for p in b.get("rework_prefixes", ["WIP", "BLOCKED", "DISPUTED", "STUCK", "FAIL"]))
+    parked_tags = set(b.get("parked_tags", []))
+    area_rx = re.compile(b.get("area_regex", r"^(.*)-\d+$"))
+    names = b.get("areas", {})
+    for r in rows:
+        v = r["verdict"].upper()
+        m = area_rx.match(r["id"])
+        r["area"] = m.group(1) if m else ""
+        r["lane"] = in_wave.get(r["id"]) or in_next.get(r["id"]) or ""
+        r["stuck"] = v.startswith("STUCK") or "stuck" in r["note"].lower()
+        r["carried"] = r["id"] in in_wave and r["lane"] in carried
+        r["parked"] = r["tag"] in parked_tags
+        if v in done_v:
+            r["column"] = "done"
+        elif r["id"] in in_wave:
+            r["column"] = "wave"
+        elif r["id"] in in_next:
+            r["column"] = "next"
+        elif v.startswith(rework) or r["stuck"]:
+            r["column"] = "rework"
+        elif v in terminal or r["parked"]:
+            r["column"] = "parked"
+        else:
+            r["column"] = "backlog"
+    order = list(dict.fromkeys([*names, *(r["area"] for r in rows)]))
+    areas = [{"code": a, "name": names.get(a, a),
+              "total": sum(1 for r in rows if r["area"] == a),
+              "done": sum(1 for r in rows if r["area"] == a and r["column"] == "done")}
+             for a in order if any(r["area"] == a for r in rows)]
+    lanes = list(cur_q) if not wave else [l["lane"] for l in wave["lanes"]] or list(cur_q)
+    return {
+        "columns": BOARD_COLUMNS,
+        "parked_label": b.get("parked_label", "Parked"),
+        "parked_hint": b.get("parked_hint", "Terminal without a PASS, or waiting on something the loop can't do alone"),
+        "rows": rows,
+        "areas": areas,
+        "lanes": [{"lane": l, "rows": cur_q.get(l, []), "carried": l in carried} for l in lanes if l],
+        "carried": carried,
+    }
+
+
+# ── the run: spend, clock, waves, projection (kanban view) ──────────────────
+def dig(obj, dotted):
+    for k in dotted.split("."):
+        if not isinstance(obj, dict):
+            return None
+        obj = obj.get(k)
+    return obj
+
+
+def run_block(repo, cfg, rows_total, rows_done, now=None):
+    """The run's budget and pace, from the checkpoint the build seat keeps.
+
+    Per-wave figures come from the checkpoint's own git history when the
+    checkpoint is committed: each commit that leaves a wave at the recorded
+    phase gives that wave's spend, start, end and the scoreboard's PASS count
+    then. Without that history, the journal's usage events give spend per wave.
+    """
+    rc = cfg.get("run")
+    if not rc or not rc.get("checkpoint"):
+        return None
+    now = now or dt.datetime.now(dt.timezone.utc)
+    k = {"spent": "budget.spent", "limit": "budget.total_limit", "unit": "budget.unit",
+         "started_at": "budget.started_at", "deadline": "budget.deadline",
+         "wave": "budget.wave.id", "wave_spent": "budget.wave.spent",
+         "wave_started_at": "budget.wave.started_at", "phase": "wave_phase", **rc.get("keys", {})}
+    path = rc["checkpoint"]
+    try:
+        with open(rel(repo, path)) as fh:
+            ck = json.load(fh)
+    except (OSError, ValueError):
+        return {"error": f"checkpoint not readable: {path}"}
+    spent = float(dig(ck, k["spent"]) or 0)
+    limit = max(float(dig(ck, k["limit"]) or 0), float(rc.get("limit_override") or 0))
+    started = parse_at(dig(ck, k["started_at"]))
+    deadline = None if rc.get("no_time_limit") else parse_at(dig(ck, k["deadline"]))
+    sbp, sb = cfg["scoreboard"]["path"], cfg["scoreboard"]
+    done_v = {v.upper() for v in cfg.get("board", {}).get("done_verdicts", ["PASS"])}
+
+    waves = {}
+    if not os.path.isabs(path):
+        for line in git(repo, "log", "--format=%H\t%cI", cfg["trunk"], "--", path).splitlines():
+            sha, when = line.split("\t")
+            try:
+                c = json.loads(git(repo, "show", f"{sha}:{path}"))
+            except ValueError:
+                continue
+            wv = dig(c, k["wave"])
+            if dig(c, k["phase"]) != rc.get("recorded_phase", "recorded") or wv is None or wv in waves:
+                continue
+            board_then = parse_scoreboard(git(repo, "show", f"{sha}:{sbp}"), sb)
+            ws, we = parse_at(dig(c, k["wave_started_at"])), parse_at(when)
+            waves[wv] = {"wave": wv, "spent": float(dig(c, k["wave_spent"]) or 0),
+                         "started": ws.isoformat() if ws else "", "recorded": when,
+                         "hours": round((we - ws).total_seconds() / 3600, 2) if ws and we and we > ws else None,
+                         "done": sum(1 for r in board_then if r["verdict"].upper() in done_v)}
+    if not waves and cfg.get("timing", {}).get("journal"):
+        try:
+            with open(rel(repo, cfg["timing"]["journal"]), errors="replace") as fh:
+                for line in fh:
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(ev, dict) and ev.get("type") == "usage" and ev.get("wave") is not None:
+                        w = waves.setdefault(ev["wave"], {"wave": ev["wave"], "spent": 0.0, "started": "",
+                                                          "recorded": "", "hours": None, "done": None})
+                        w["spent"] += float(ev.get("amount") or 0)
+        except OSError:
+            pass
+    hist = [waves[w] for w in sorted(waves, key=lambda x: int(x))]
+    prev = 0
+    for h in hist:
+        if h["done"] is not None:
+            h["new"], prev = h["done"] - prev, h["done"]
+    n = len(hist)
+    elapsed_h = (now - started).total_seconds() / 3600 if started else None
+    per_spent = spent / n if n else None
+    hours = [h["hours"] for h in hist if h["hours"]]
+    per_h = sum(hours) / len(hours) if hours else (elapsed_h / n if n and elapsed_h else None)
+    per_done = rows_done / n if n else None
+    left_spent = max(limit - spent, 0) if limit else None
+    left_h = (deadline - now).total_seconds() / 3600 if deadline else None
+    proj = None
+    if n and per_done:
+        by_spend = left_spent / per_spent if left_spent is not None and per_spent else float("inf")
+        by_clock = max(left_h, 0) / per_h if left_h is not None and per_h else float("inf")
+        more = min(by_spend, by_clock)
+        if more != float("inf"):
+            proj = {"done": min(rows_total, round(rows_done + more * per_done)),
+                    "waves_more": round(more, 1),
+                    "bound_by": "budget" if by_spend <= by_clock else "clock"}
+    finish = None
+    if per_done:
+        wl = (rows_total - rows_done) / per_done
+        finish = {"waves": round(wl, 1), "spent": round(wl * per_spent) if per_spent else None,
+                  "hours": round(wl * per_h, 1) if per_h else None}
+    return {
+        "unit": dig(ck, k["unit"]) or rc.get("unit", "tokens"),
+        "spent": spent, "limit": limit or None,
+        "started_at": started.isoformat() if started else "",
+        "deadline": deadline.isoformat() if deadline else "",
+        "no_time_limit": bool(rc.get("no_time_limit")),
+        "elapsed_hours": round(elapsed_h, 2) if elapsed_h is not None else None,
+        "waves": hist,
+        "per_wave": {"spent": per_spent, "hours": round(per_h, 2) if per_h else None,
+                     "done": round(per_done, 1) if per_done else None},
+        "projection": proj,
+        "to_finish": finish,
+        "note": rc.get("note", ""),
+    }
+
+
+def status_file(path):
+    """The build seat's latest checklist, if the monitor saved one:
+    {"text": "<header>\\n\\n✓ step\\n✱ step\\n○ step", "at": "<ISO time>"}."""
+    try:
+        with open(path) as fh:
+            st = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    lines = [l.strip().replace("**", "") for l in str(st.get("text", "")).splitlines() if l.strip()]
+    if not lines:
+        return None
+    steps = [{"state": "done" if l[0] == "✓" else "now" if l[0] == "✱" else "todo",
+              "text": l.lstrip("✓✱○ ").strip()} for l in lines[1:]]
+    return {"head": lines[0], "steps": steps, "at": st.get("at", "")}
+
+
 # ── the owner's list ────────────────────────────────────────────────────────
 def owner_list(path):
     items = []
@@ -370,12 +673,16 @@ def owner_list(path):
     return items
 
 
-def build(cfg, cfg_dir):
+def build(cfg, cfg_dir, view="checklist"):
     repo = cfg["repo"]
     sb = cfg["scoreboard"]
     rows = parse_scoreboard(open(rel(repo, sb["path"]), errors="replace").read(), sb)
     rows_s = summarise_rows(rows, sb)
-    gates = read_gates(open(rel(repo, cfg["gates"]["path"])).read(), cfg["gates"])
+    gcfg = cfg.get("gates") or {}
+    try:
+        gates = read_gates(open(rel(repo, gcfg["path"])).read(), gcfg)
+    except (KeyError, OSError):
+        gates = []
     n = current_wave(repo, cfg)
     done = [{"label": sb.get("done_label", "Every row has a terminal verdict"),
              "value": rows_s["terminal"] + len(rows_s["derived"]), "target": rows_s["total"],
@@ -389,7 +696,9 @@ def build(cfg, cfg_dir):
     for extra in cfg.get("done_extra", []):
         done.append({"label": extra["label"], "value": None, "target": None,
                      "done": bool(extra.get("done")), "detail": extra.get("detail", "")})
-    return {
+    wave = wave_block(repo, cfg, n) if n else None
+    data = {
+        "view": view,
         "project": cfg.get("project", os.path.basename(repo)),
         "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
         "trunk": cfg["trunk"],
@@ -397,29 +706,39 @@ def build(cfg, cfg_dir):
         "rows": rows_s,
         "gates": gates,
         "done": done,
-        "wave": wave_block(repo, cfg, n) if n else None,
+        "wave": wave,
         "owner": owner_list(rel(cfg_dir, cfg.get("owner_list", "owner-list.md"))),
         "owner_name": cfg.get("owner_name", "Owner"),
         "history": history(repo, cfg),
         "timing": timings(repo, cfg, n),
     }
+    if view == "kanban":
+        data["board"] = board(repo, cfg, n, wave)
+        cards = data["board"]["rows"]
+        data["run"] = run_block(repo, cfg, len(cards), sum(1 for r in cards if r["column"] == "done"))
+        data["status"] = status_file(rel(cfg_dir, cfg["status_file"])) if cfg.get("status_file") else None
+        data["last_push"] = git(repo, "log", "-1", "--format=%cI\t%s",
+                                f'{cfg.get("remote", "origin")}/{cfg["trunk"]}')
+    return data
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
+    ap.add_argument("--view", choices=sorted(TEMPLATES), help="which page to write; overrides the config's view")
     ap.add_argument("--json", action="store_true", help="print the data and write nothing")
     a = ap.parse_args()
     cfg_path = os.path.abspath(a.config)
     cfg_dir = os.path.dirname(cfg_path)
     cfg = json.load(open(cfg_path))
-    data = build(cfg, cfg_dir)
+    view = a.view or cfg.get("view", "checklist")
+    data = build(cfg, cfg_dir, view)
     if a.json:
         json.dump(data, sys.stdout, indent=1)
         return
-    tpl = open(rel(cfg_dir, cfg["template"]) if cfg.get("template") else DEFAULT_TEMPLATE).read()
+    tpl = open(rel(cfg_dir, cfg["template"]) if cfg.get("template") else TEMPLATES[view]).read()
     blob = json.dumps(data).replace("</", "<\\/")
-    html = tpl.replace("/*__DATA__*/null", blob).replace("__TITLE__", htmllib.escape(data["project"] + " progress"))
+    html = tpl.replace("/*__DATA__*/null", blob).replace("__TITLE__", htmllib.escape(data["project"] + (" build board" if view == "kanban" else " progress")))
     out = rel(cfg_dir, cfg.get("out", "progress.html"))
     tmp = out + ".tmp"
     with open(tmp, "w") as fh:

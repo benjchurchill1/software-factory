@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0
+
+- **The Kanban board.** `progress.py` gains a second view of the same data, `--view kanban` (or `"view": "kanban"` in `monitor.json`, now the example's default). Every register row is a card in one of six columns: Backlog, Next wave, This wave, Rework, Parked, Done. Only `done_verdicts` (PASS by default) reach Done. Queue files are read as a lane table or as `**lane**` entries, with "SES-05, 06" and "TRI-01..04" expanded and only ids on the scoreboard counted. A module filter narrows the board; lanes carried after a refutation are marked.
+- **The run.** Above the board: spent against the cap, time against the deadline (or "runs until finished"), waves recorded, spend and rows per wave, a projection bound by whichever of budget or clock runs out first, and what finishing every row would take at the current pace, with a per-wave table. Figures come from the build seat's `checkpoint.json` and, when it is committed, its git history; otherwise from the journal's `usage` events. `run.limit_override` and `run.no_time_limit` hold the owner's later word until the checkpoint catches up.
+- Optional `status_file`: the build seat's latest status checklist, shown on the board and used to judge health.
+- A missing gates file no longer stops the page.
+- First used on the Keystone build, where the owner asked for the board in place of the checklist.
+- Self-test: 47 tests (from 43).
+
 ## 0.3.0
 
 Five additions for a build nobody reviews wave by wave. None was measured on the source build; each extends a rule that held there only while someone watched.
