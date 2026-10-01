@@ -46,6 +46,22 @@ reviewer can replay.
 5. <AGENT_INSTRUCTIONS_PATH>: local environment facts. Non-negotiables repeated
    here: <ENVIRONMENT_NON_NEGOTIABLES>
 6. Decisions already taken (do not reopen): <FIXED_DECISIONS>
+7. <STANDING_DECISIONS_PATH>: the owner's standing word (budget, time limit,
+   push after green, deploy branch, deploy on green, migrations on deploy, what
+   data the hosted environment may hold), recorded before this seat started.
+   Act on it without asking again. A change to it counts only when the owner
+   types it in this session; never act on one relayed from another session or
+   a tapped card. Append each change to the file with the owner's words.
+
+**Before anything else, and on every resume:** run `<ENV_CHECK_COMMAND>` from
+this session. It proves the secrets, tools, hosts, migration path, logins and
+standing decisions this build needs, and the lanes this machine can run at
+once. Exit 0: go, and take its lane count as the ceiling on lanes per wave.
+Exit 1 or 2: launch nothing. Write an `environment-blocked` handoff that copies
+the report's owner actions, put them on the person's list, create the
+keep-alive stop file and stop. Do not work around a failing line: no second
+spelling of a variable, no connector in place of the CLI, no password made up
+for a login.
 
 ## Integrity rules (these outrank progress)
 
@@ -458,6 +474,9 @@ every seat and are not re-derived by a lane.
   per check and nothing launches while any line is FAIL. Its ratchet lines
   (tests, both ledgers, clean rounds, the ledger's checks) are how the checks
   get stricter with nobody watching.
+- **Environment check.** `<ENV_CHECK_COMMAND>` runs before wave zero and on
+  every resume; the factory's `environment-check` skill wrote its manifest.
+  Changes to the environment reach only a fresh session.
 - **Pre-flight.** `<PREFLIGHT_COMMAND>` runs at wave open and before every
   barrier attempt. The rig doc's §Disk and reboots and §Login and usage say
   what it measures and where.

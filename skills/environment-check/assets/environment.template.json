@@ -1,0 +1,77 @@
+{
+  "project": "<PROJECT>",
+  "where_the_build_runs": "<cloud OR local>",
+  "cloud_environment": "<CLOUD_ENVIRONMENT_NAME: the environment the build session is started on; delete for local>",
+
+  "secrets": [
+    {"name": "<HOSTING_TOKEN_NAME>", "for": "deploy to <HOSTING_PROVIDER>"},
+    {"name": "<DATABASE_TOKEN_NAME>", "for": "apply migrations to the hosted database"},
+    {"name": "<OPTIONAL_SECRET_NAME>", "for": "<WHAT_IT_IS_FOR>", "optional": true}
+  ],
+
+  "tools": [
+    {"name": "<CLI_NAME>", "version_command": "<CLI_NAME> --version", "install": "<INSTALL_COMMAND>"}
+  ],
+
+  "hosts": [
+    "<HOSTING_API_HOST>",
+    "<DATABASE_API_HOST>",
+    "<PACKAGE_REGISTRY_HOST>"
+  ],
+
+  "probes": [
+    {
+      "name": "<HOSTING_PROVIDER> token can see the target site",
+      "command": "<COMMAND_THAT_LISTS_OR_READS_THE_TARGET>",
+      "expect_stdout": "<TARGET_ID_OR_NAME>",
+      "needs": ["<HOSTING_TOKEN_NAME>"],
+      "owner_fix": "<ONE_SENTENCE_THE_OWNER_CAN_ACT_ON>"
+    }
+  ],
+
+  "migrations": {
+    "dir": "<MIGRATIONS_DIR>",
+    "deploy_script": "<DEPLOY_SCRIPT_PATH>",
+    "apply_command": "<APPLY_COMMAND: the exact text the deploy script must run>",
+    "probes": [
+      {
+        "name": "the token can read the hosted migration history",
+        "command": "<MIGRATION_LIST_COMMAND>",
+        "needs": ["<DATABASE_TOKEN_NAME>"],
+        "owner_fix": "<ONE_SENTENCE_THE_OWNER_CAN_ACT_ON>"
+      },
+      {
+        "name": "a dry run of the push plans every pending migration",
+        "command": "<APPLY_DRY_RUN_COMMAND>",
+        "needs": ["<DATABASE_TOKEN_NAME>"],
+        "timeout": 300
+      }
+    ]
+  },
+
+  "logins": {
+    "how": "<seed OR invite OR owner-creates>",
+    "accounts": [
+      {"email": "<OWNER_EMAIL>", "role": "<ROLE>"}
+    ],
+    "owner_confirmed": false
+  },
+
+  "concurrency": {
+    "planned_lanes": <PLANNED_LANES>,
+    "cores_per_lane": 2,
+    "gb_per_lane": 3,
+    "parallel_review_min_cores": 8
+  },
+
+  "decisions_file": "docs/build/standing-decisions.md",
+  "decisions_required": [
+    "budget",
+    "time-limit",
+    "push-after-green",
+    "deploy-branch",
+    "deploy-on-green",
+    "migrations-on-deploy",
+    "test-data"
+  ]
+}

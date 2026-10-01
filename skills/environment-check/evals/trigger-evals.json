@@ -25,19 +25,19 @@
   },
   {
     "query": "write the loop prompt for the booking app now that the factory's primed. register is at docs/requirements/register.md and green is pnpm check",
-    "should_trigger": true
+    "should_trigger": false
   },
   {
     "query": "our existing build loop prompt lets builders mark their own rows PASS and it keeps retiring tests when the machine is slow. can you fix the prompt?",
-    "should_trigger": true
+    "should_trigger": false
   },
   {
     "query": "I want a 'run until every requirement passes' prompt for Claude Code with parallel builders and adversarial verifiers",
-    "should_trigger": true
+    "should_trigger": false
   },
   {
     "query": "adapt the loop prompt from the practice-management build to this new repo, it has no stop condition for two waves with no change",
-    "should_trigger": true
+    "should_trigger": false
   },
   {
     "query": "start the monitor seat for the build that's running in the other terminal",
@@ -85,22 +85,22 @@
   },
   {
     "query": "before I start the build session can you check everything's set up? tokens, the hosted database, netlify, the lot. I don't want it stopping halfway like last time",
-    "should_trigger": false
+    "should_trigger": true
   },
   {
     "query": "the build just told me only 3 of 26 migrations made it to the hosted supabase db and nobody can log in. how do we make sure that never happens on the next project?",
-    "should_trigger": false
+    "should_trigger": true
   },
   {
     "query": "what secrets and env vars does the cloud environment need for this build to deploy and run migrations by itself?",
-    "should_trigger": false
+    "should_trigger": true
   },
   {
     "query": "the deploy step can't find NETLIFY_AUTH_TOKEN but I'm sure I added it to the environment",
-    "should_trigger": false
+    "should_trigger": true
   },
   {
     "query": "I keep approving the budget in other threads and the build seat ignores it. can we get all the standing decisions sorted before kick-off?",
-    "should_trigger": false
+    "should_trigger": true
   }
 ]

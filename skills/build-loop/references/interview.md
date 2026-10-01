@@ -235,6 +235,7 @@ Which answer fills which template slot. Slots appear as `<NAME>` or
 | the lane provisioning script and its evidence root | `<LANE_CUT_COMMAND>`, `<EVIDENCE_DIR>` |
 | the pre-barrier check script | `<PRE_BARRIER_COMMAND>` |
 | the pre-flight script (login, usage, disk, reboots, config) | `<PREFLIGHT_COMMAND>` |
+| the environment check and the owner's standing decisions (`environment-check`) | `<ENV_CHECK_COMMAND>`, `<STANDING_DECISIONS_PATH>` |
 | the ratchet: the checks ledger, the never-together ledger, the supersessions register | `<CHECKS_LEDGER>`, `<NEVER_TOGETHER_PATH>`, `<SUPERSESSIONS_PATH>` |
 | the lane database script and the two test classes that stay at the barrier | `<LANE_DB_COMMAND>`, `<SHARED_RESOURCE_SUITES>` |
 | the derived files and their regeneration paths; the record caps | `<REGENERATED_FILES>`, `<RECORD_CAPS>` |

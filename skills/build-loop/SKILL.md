@@ -150,6 +150,11 @@ least one lane or barrier when missing; the fourth is new in 0.3.0:
   repo commits `.claude/test-freeze.json` (software-factory gate 12). The
   pre-barrier `tests` line is the guarantee; the hook saves the lane a stage.
 
+Before the first wave, `environment-check` has passed from the session the
+build seat will run in (for a cloud build, a fresh session on its environment),
+and the loop prompt reruns it as its first step. If it was never run, run it
+now, before handing over.
+
 Before the first wave, the owner records the login time
 (`date -u +%FT%TZ > <run state dir>/auth-at`) unless the rig has a command that
 reports the time left, and the pre-flight runs once by hand.

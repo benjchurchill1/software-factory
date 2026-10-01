@@ -1,6 +1,6 @@
 # software-factory
 
-Three Claude Code skills for running an autonomous software build: a
+Four Claude Code skills for running an autonomous software build: a
 requirements register in, a build proved row by row against it, with
 verification you can inspect and no one watching the terminal.
 
@@ -13,6 +13,7 @@ can't see.
 | Skill | When | What it does |
 | --- | --- | --- |
 | `software-factory` | Once, before the build; again if a running build stalls on its environment | Quality-tests the requirements register and the definition of done, then primes thirteen gates: rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter. Then invokes `build-loop`. |
+| `environment-check` | Once, at the end of priming, from the session the build will run in; again when a running build hits a missing token, host, migration or login | Lists everything the build needs from outside the repo (secrets, CLIs, hosts, the hosted database's migration path, the deploy target, logins, the owner's standing decisions) and proves each from the build's own session. Catches misspelt secret names, a deploy that does not apply migrations, logins only the owner can create, and a wave plan wider than the machine. Gives the owner one list of what to fix, and the loop reruns it before wave zero. |
 | `build-loop` | Once, at the end of priming; again to fix the loop prompt's logic | Interviews you and writes the loop prompt, the shared-resource conventions, a status readout and the scoreboard. Waves run parallel lanes in worktrees, each built and then attacked by adversarial verify panels until two rounds in a row come back clean at the same commit (up to three build stages inside the wave), and then one serial barrier. Every refutation that stands becomes a check later waves apply. Five gate counts ratchet: none may rise. |
 | `build-monitor` | For the life of the build, in a second session | Reviews every lane before merge (screenshots at phone and desktop width), rules within your delegation, shapes the next wave's queue, runs staging checks, keeps your to-do list short, and publishes a generated progress page: a **Kanban board** of every register row with the run's spend, clock and projection, or a **checklist** of road to done, the current wave lane by lane, the next queue, what waits on you, where each wave's time went, and history. |
 
@@ -76,6 +77,21 @@ tighten by itself and be unable to loosen quietly:
 
 These are new in 0.3.0 and, unlike the rest, were not measured on the source
 build.
+
+## Before the build starts: the environment check
+
+The factory primes the machine and the repo. The environment check proves the
+world outside them: every token the build needs is set under its exact name and
+works against the real target, every host is reachable, the deploy script
+applies migrations with the database's CLI, every login someone will use has
+someone responsible for creating it, the owner's standing decisions are written
+in the repo, and the wave plan fits the machine. It runs from the session the
+build will run in, because a cloud session never sees environment changes made
+after it started, and the loop runs it again before wave zero.
+
+It was added after the Keystone build found each of these mid-build
+(`skills/environment-check/references/evidence.md`); like the 0.3.0 additions,
+it has not yet been measured on a build from the start.
 
 ## Install
 
@@ -192,7 +208,7 @@ question, and each skill has evals for it in `skills/<name>/evals/`:
 `evals.json` holds task prompts with assertions, and `trigger-evals.json` holds
 twenty-one queries per skill for testing that the right skill fires. The trigger
 sets are generated from one list, `evals/triggers.json`, so each skill is
-tested against the other two's near-misses:
+tested against the others' near-misses:
 
 ```
 python3 evals/split_triggers.py

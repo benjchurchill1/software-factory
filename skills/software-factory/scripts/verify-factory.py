@@ -421,7 +421,8 @@ esac
                        "## Prediction", "## Lessons become checks", "### Pausing on a usage limit",
                        '"type": "usage"', '"type": "rate_limit"', "auth-expiring", "<SUPERSESSIONS_PATH>",
                        "<NEVER_TOGETHER_PATH>", "A contention red never becomes a check",
-                       "the loop never rules on its own checks", "`paused`"]:
+                       "the loop never rules on its own checks", "`paused`",
+                       "<ENV_CHECK_COMMAND>", "environment-blocked", "<STANDING_DECISIONS_PATH>"]:
             self.assertIn(clause, " ".join(loop.split()))
         conventions = (LOOP / "assets/build-conventions.template.md").read_text()
         for clause in ["## Seats", "`build-monitor`", "isolation: 'worktree'"]:
@@ -1144,6 +1145,94 @@ class KanbanBoard(TimingBase):
         self.assertNotIn("/*__DATA__*/null", page)
         self.assertIn('"column": "parked"', page)
         self.assertIn("<title>repo build board</title>", page)
+
+
+class EnvironmentCheck(unittest.TestCase):
+    """env-check.py against a temp repo, with no network and a scrubbed environment."""
+
+    SCRIPT = SKILL.parent / "environment-check" / "scripts" / "env-check.py"
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="env-check-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        (self.root / "db").mkdir()
+        for n in range(3):
+            (self.root / "db" / f"{n:03}_init.sql").write_text("select 1;\n")
+        (self.root / "deploy.sh").write_text("#!/bin/bash\nsupabase db push\nnetlify deploy\n")
+        (self.root / "decisions.md").write_text(
+            "- budget: 150M total, 12M a wave (owner, 2026-10-01)\n"
+            "- deploy-on-green: yes (owner, 2026-10-01)\n")
+        self.manifest = {
+            "project": "fixture", "where_the_build_runs": "cloud", "cloud_environment": "Fixture Build",
+            "secrets": [{"name": "HOST_AUTH_TOKEN", "for": "deploy"},
+                        {"name": "OPTIONAL_KEY", "for": "nice to have", "optional": True}],
+            "tools": [{"name": "python3", "version_command": "python3 --version"},
+                      {"name": "no-such-cli-xyz", "install": "npm i -g no-such-cli-xyz"}],
+            "probes": [{"name": "token sees the site", "command": "echo site-123 $HOST_AUTH_TOKEN",
+                        "expect_stdout": "site-123", "needs": ["HOST_AUTH_TOKEN"]}],
+            "migrations": {"dir": "db", "deploy_script": "deploy.sh", "apply_command": "supabase db push"},
+            "logins": {"how": "owner-creates", "accounts": [{"email": "owner@example.com", "role": "admin"}],
+                       "owner_confirmed": False},
+            "concurrency": {"planned_lanes": 999},
+            "decisions_file": "decisions.md",
+            "decisions_required": ["budget", "deploy-on-green", "migrations-on-deploy"],
+        }
+
+    def run_check(self, *args, **env):
+        (self.root / "environment.json").write_text(json.dumps(self.manifest))
+        base = {k: v for k, v in os.environ.items() if k in {"PATH", "HOME", "LANG", "SYSTEMROOT"}}
+        return subprocess.run([sys.executable, str(self.SCRIPT), "--repo", str(self.root),
+                               "--manifest", "environment.json", "--skip-network", *args],
+                              env=dict(base, **env), capture_output=True, text=True, timeout=60)
+
+    def test_blocked_report_names_every_owner_action(self):
+        r = self.run_check(HOST_AUT_TOKEN="s3cret-value-1")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        out = r.stdout
+        self.assertIn("**BLOCKED**", out)
+        self.assertIn("Rename HOST_AUT_TOKEN to HOST_AUTH_TOKEN", out)
+        self.assertIn("fresh session", out)
+        self.assertIn("Install no-such-cli-xyz", out)
+        self.assertIn("never invents passwords", out)
+        self.assertIn("migrations-on-deploy", out)
+        self.assertIn("planned 999", out)
+        self.assertNotIn("s3cret-value-1", out)
+        self.assertRegex(out, r"\| secrets \| OPTIONAL_KEY \| WARN")
+
+    def test_ready_when_everything_is_in_place_and_values_are_redacted(self):
+        self.manifest["tools"] = self.manifest["tools"][:1]
+        self.manifest["logins"]["owner_confirmed"] = True
+        self.manifest["concurrency"]["planned_lanes"] = 1
+        (self.root / "decisions.md").write_text(
+            "- budget: 150M (owner, 2026-10-01)\n- deploy-on-green: yes\n- migrations-on-deploy: yes\n")
+        report = self.root / "out" / "env.md"
+        r = self.run_check("--report", str(report), HOST_AUTH_TOKEN="s3cret-value-2")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("**READY**", report.read_text())
+        self.assertIn("Lanes at once", r.stdout)
+        self.assertNotIn("s3cret-value-2", r.stdout + report.read_text())
+
+    def test_deploy_without_migrations_and_failed_probe(self):
+        (self.root / "deploy.sh").write_text("#!/bin/bash\nnetlify deploy\n")
+        self.manifest["probes"][0]["expect_stdout"] = "other-site"
+        r = self.run_check(HOST_AUTH_TOKEN="tok-abcdef")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("does not run `supabase db push`", r.stdout)
+        self.assertRegex(r.stdout, r"token sees the site \| FAIL")
+        self.assertNotIn("tok-abcdef", r.stdout)
+
+    def test_dry_run_runs_nothing_and_slots_are_refused(self):
+        marker = self.root / "ran"
+        self.manifest["probes"][0]["command"] = f"touch {marker}"
+        r = self.run_check("--dry-run")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("PLAN  probes: token sees the site", r.stdout)
+        self.assertFalse(marker.exists())
+        self.manifest["project"] = "<PROJECT>"
+        self.assertEqual(self.run_check().returncode, 2)
+        template = SKILL.parent / "environment-check" / "assets" / "environment.template.json"
+        self.assertRegex(template.read_text(), r"<PLANNED_LANES>")
 
 
 class HouseStyle(unittest.TestCase):

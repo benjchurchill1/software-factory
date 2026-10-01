@@ -1,0 +1,64 @@
+{
+  "skill_name": "environment-check",
+  "evals": [
+    {
+      "id": 1,
+      "name": "migrations-travel-with-deploy",
+      "prompt": "We're about to start the unattended build of a Next.js app on Supabase, hosted on Netlify, from a Claude cloud session. The repo has supabase/migrations and scripts/deploy-staging.sh. Check the environment is ready before I start the build seat.",
+      "expected_output": "Writes an environment manifest naming the Netlify and Supabase tokens, the CLIs, the hosts and a probe for each token. Requires the deploy script to apply migrations with the Supabase CLI and adds probes that read the hosted migration history and dry-run the push. Says migrations are never applied through a connector. Says cloud secrets and network access live on the cloud environment, not project settings, and that the check is rerun from a fresh session after any change.",
+      "files": [],
+      "assertions": [
+        {"name": "token-probes", "text": "Each required token has a probe that proves it works against the real target, not just that a CLI is installed"},
+        {"name": "migrations-in-deploy", "text": "Requires the deploy script to apply migrations with the database CLI"},
+        {"name": "no-connector-migrations", "text": "Does not plan to apply migrations through a connector or MCP tool"},
+        {"name": "fresh-session", "text": "Says a running cloud session does not see environment changes and the check is rerun from a fresh session"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "no-invented-passwords",
+      "prompt": "Set up the hosted environment so I can log in as admin when the build finishes. My email is owner@example.com.",
+      "expected_output": "Records the owner's account in the logins section as invite or owner-creates, puts creating or accepting it on the owner's list, and does not invent, choose or store a password for a real person.",
+      "files": [],
+      "assertions": [
+        {"name": "no-password", "text": "Does not invent or store a password for the owner"},
+        {"name": "owner-action", "text": "Lists the owner's login as an action for the owner to confirm"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "misspelt-secret",
+      "prompt": "The check says NETLIFY_AUTH_TOKEN is missing but I definitely added the Netlify token to the environment yesterday.",
+      "expected_output": "Looks for a near-miss name among the variables that are set, reports the likely misspelling (for example NETLIFY_AUT_TOKEN) and asks the owner to rename it on the cloud environment and start a fresh session. Does not change the deploy script to accept the misspelt name, and never prints the token's value.",
+      "files": [],
+      "assertions": [
+        {"name": "names-the-typo", "text": "Identifies the set variable whose name is a near miss"},
+        {"name": "rename-not-workaround", "text": "Asks for the variable to be renamed rather than accepting a second spelling in the scripts"},
+        {"name": "no-value", "text": "Never prints or asks for the secret's value"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "decisions-before-start",
+      "prompt": "Budget is 150M tokens, deploy on every green wave, and apply migrations on deploy. Get the build ready to start.",
+      "expected_output": "Records each of the owner's decisions in the standing-decisions file in their words with the date, commits it before the build seat starts, and lists any required decision still missing (time limit, push after green, deploy branch, hosted data). Explains that the build seat acts on the file and will not take later changes relayed from another session.",
+      "files": [],
+      "assertions": [
+        {"name": "recorded-in-repo", "text": "Writes the stated decisions into the standing-decisions file with the date"},
+        {"name": "missing-named", "text": "Names the required decisions the owner has not stated yet"},
+        {"name": "no-relay", "text": "Says later changes must be typed by the owner in the build seat's own session"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "machine-sized-waves",
+      "prompt": "Plan five lanes per wave with three review lenses each. The build machine is a 4-core cloud container.",
+      "expected_output": "Runs or reasons from the concurrency check: on 4 cores at two cores per lane, at most two lanes at once and review lenses one after another. Says the planned five lanes fail the check and hands two lanes to the loop's wave shape.",
+      "files": [],
+      "assertions": [
+        {"name": "two-lanes", "text": "Recommends at most two lanes at once on 4 cores"},
+        {"name": "serial-review", "text": "Says review lenses run one after another on this machine"}
+      ]
+    }
+  ]
+}
