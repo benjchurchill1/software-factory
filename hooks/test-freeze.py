@@ -11,13 +11,18 @@ CONTRACT
   configured  the edited file sits inside a checkout (a repo or a lane
               worktree) whose root holds `.claude/test-freeze.json`, committed
               by software-factory at gate 12:
-                {"tests": ["tests/**", "**/*.spec.ts"],
+                {"tests": ["tests/**", "**/*.spec.ts", "scripts/checks/**"],
+                 "frozen": ["scripts/guards.py", "scripts/pre-barrier.sh",
+                            "scripts/preflight.sh"],
                  "base": "<the trunk branch>",
                  "supersessions": "docs/build/supersessions.jsonl"}
               No config, no effect: every other project is untouched.
   frozen      a path matching one of `tests` that already exists on `base`.
               A test file the lane created itself is not frozen, so a builder
-              can write and rework its own new tests freely.
+              can write and rework its own new tests freely. Check scripts
+              belong in `tests` too: a weakened check is a weakened test. The
+              `frozen` paths (by default the ratchet's own scripts) are frozen
+              the same way, and are never superseded either.
   refused     Edit, Write, MultiEdit or NotebookEdit on a frozen path, or on
               the config file itself. The refusal says how to supersede.
   not a lock  a shell command can still change a file. The guarantee is the
@@ -36,6 +41,7 @@ import sys
 from pathlib import Path
 
 CONFIG = Path(".claude") / "test-freeze.json"
+DEFAULT_FROZEN = ["scripts/guards.py", "scripts/pre-barrier.sh", "scripts/preflight.sh"]
 
 
 def allow():
@@ -102,12 +108,18 @@ def main():
     except (OSError, ValueError, KeyError, TypeError):
         allow()
     register = str(cfg.get("supersessions") or "docs/build/supersessions.jsonl")
-    if not any(glob_regex(g).match(rel) for g in globs):
+    frozen = [str(g) for g in cfg.get("frozen", DEFAULT_FROZEN)]
+    is_frozen = any(glob_regex(g).match(rel) for g in frozen)
+    if not is_frozen and not any(glob_regex(g).match(rel) for g in globs):
         allow()
     committed = subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{base}:{rel}"],
                                capture_output=True, timeout=5).returncode == 0
     if not committed:
         allow()
+    if is_frozen:
+        deny(f"{rel} is part of the ratchet that keeps tests and checks from getting looser, "
+             "and no build seat edits it. A change to it is the owner's; pre-barrier.sh fails "
+             "any merge that makes one.")
     deny(f"{rel} is a committed test (it exists on {base}). Committed tests are superseded, "
          "never edited. If it is genuinely wrong, write a successor that names "
          f"{Path(rel).name} in its header with an assertion map, and append "

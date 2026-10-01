@@ -342,6 +342,7 @@ esac
         git("init", "-b", "trunk")
         commit("app.txt")
         commit(".claude/test-freeze.json", json.dumps({"tests": ["tests/**"], "base": "trunk"}))
+        commit("scripts/guards.py", GUARDS.read_text())
         git("checkout", "-b", "w1/ab")
         commit("ab.txt")
         clean("ab")
@@ -399,6 +400,13 @@ esac
         commit("tests/a.test", "assert loose\n")
         self.assertIn("FAIL tests: committed tests edited: tests/a.test",
                       self.run_script(path, "--squashed", "cd").stdout)
+
+        # A merge that edits guards.py to pass everything is judged by the
+        # trunk's guards.py, which fails it.
+        commit("scripts/guards.py", "print('PASS tests: tampered'); print('PASS panels: tampered')\n")
+        result = self.run_script(path, "--squashed", "cd")
+        self.assertIn("frozen files changed: scripts/guards.py", result.stdout)
+        self.assertNotIn("tampered", result.stdout)
         git("checkout", "trunk")
         self.assertIn("FAIL head", self.run_script(path, "--squashed", "cd").stdout)
 
@@ -778,6 +786,24 @@ class Guards(RealRepo):
         self.git("checkout", "-q", "trunk")
         self.assertIn("PASS", tests()[1])
 
+    def test_check_scripts_and_the_ratchet_itself_are_frozen(self):
+        self.put(".claude/test-freeze.json", json.dumps(
+            {"tests": ["tests/**", "scripts/checks/**"], "base": "trunk"}), commit=False)
+        self.put("scripts/checks/c1.sh", "grep -rq tenant_id src || exit 1\n", commit=False)
+        self.put("scripts/guards.py", "# the real one\n")
+        self.git("checkout", "-q", "-b", "work")
+        self.put("scripts/checks/c2.sh", "exit 0\n")
+        self.assertEqual(self.guard("tests", "--trunk", "trunk")[0], 0, "a new check is not frozen")
+        self.put("scripts/checks/c1.sh", "exit 0\n")
+        self.assertIn("committed tests edited: scripts/checks/c1.sh", self.guard("tests", "--trunk", "trunk")[1])
+        self.git("reset", "-q", "--hard", "HEAD~1")
+        self.put("scripts/guards.py", "# weakened\n")
+        self.assertIn("frozen files changed: scripts/guards.py", self.guard("tests", "--trunk", "trunk")[1])
+        self.git("reset", "-q", "--hard", "HEAD~1")
+        self.git("rm", "-q", "scripts/guards.py")
+        self.git("commit", "-q", "-m", "drop it")
+        self.assertIn("frozen files changed: scripts/guards.py", self.guard("tests", "--trunk", "trunk")[1])
+
     def test_supersessions_register_is_append_only(self):
         self.put(".claude/test-freeze.json", json.dumps({"tests": ["tests/**"], "base": "trunk"}),
                  commit=False)
@@ -979,6 +1005,11 @@ class TestFreezeHook(RealRepo):
         self.assertIsNotNone(self.hook("Write", "tests/a.test"), "a relative path resolves from cwd")
         self.assertIsNotNone(self.hook("MultiEdit", self.repo / "tests/a.test"))
         self.assertIn("defines the test freeze", self.hook("Edit", self.repo / ".claude/test-freeze.json"))
+
+    def test_the_ratchet_scripts_are_frozen_by_default(self):
+        self.put("scripts/guards.py", "# the real one\n")
+        self.assertIn("part of the ratchet", self.hook("Edit", self.repo / "scripts/guards.py"))
+        self.assertIsNone(self.hook("Edit", self.repo / "scripts/other.sh"))
 
     def test_new_tests_other_files_and_other_tools_are_allowed(self):
         self.assertIsNone(self.hook("Write", self.repo / "tests/new/b.test"))

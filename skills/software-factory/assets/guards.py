@@ -4,6 +4,7 @@
     guards.py ledger   <path> --kind checks|together --trunk <branch>
     guards.py checks   <path>
     guards.py tests    --trunk <branch> [--head <ref>] [--config .claude/test-freeze.json]
+                       (also fails any change to the config's "frozen" paths)
     guards.py panels   --journal <file> --wave <n> --rounds <k> [--max-stages 3] <lane>=<commit>...
     guards.py together <path> --queue <file>
     guards.py pace     --journal <file> --wave <n> --mode wave|barrier [--limit x]
@@ -49,6 +50,9 @@ from pathlib import Path
 
 CODES = {"PASS": 0, "FAIL": 1, "PAUSE": 10, "STOP": 20}
 RUN_PATH = re.compile(r"^scripts/checks/[a-z0-9][a-z0-9_-]*\.sh$")
+# Files no merge may change at all: the ratchet's own machinery. Without this a
+# lane could edit guards.py to print PASS, or pre-barrier.sh to skip a line.
+DEFAULT_FROZEN = ["scripts/guards.py", "scripts/pre-barrier.sh", "scripts/preflight.sh"]
 
 
 def verdict(kind, name, detail, extra=None):
@@ -231,18 +235,23 @@ def cmd_tests(a):
     except (ValueError, KeyError, TypeError):
         verdict("FAIL", "tests", f"{a.config} on {a.trunk} needs a \"tests\" list of globs")
     register = str(cfg.get("supersessions") or "docs/build/supersessions.jsonl")
+    frozen = [str(g) for g in cfg.get("frozen", DEFAULT_FROZEN)]
     rc, diff = git(root, "diff", "--name-status", "--no-renames", f"{a.trunk}...{a.head}")
     if rc != 0:
         verdict("FAIL", "tests", f"cannot diff {a.trunk}...{a.head}")
-    problems, deleted, edited = [], [], []
+    problems, deleted, edited, touched = [], [], [], []
     for line in diff.splitlines():
         status, _, path = line.partition("\t")
         if path in (a.config,):
             problems.append(f"{a.config} changed")
+        elif matches(path, frozen):
+            touched.append(path)
         elif matches(path, globs) and status[:1] in ("M", "T"):
             edited.append(path)
         elif matches(path, globs) and status[:1] == "D":
             deleted.append(path)
+    if touched:
+        problems.append("frozen files changed: " + ", ".join(touched))
     if edited:
         problems.append("committed tests edited: " + ", ".join(edited))
     rc, base_reg = git(root, "show", f"{a.trunk}:{register}")

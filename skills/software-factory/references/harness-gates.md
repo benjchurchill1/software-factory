@@ -201,9 +201,15 @@ Standard library only; each subcommand prints one line and exits 0 PASS, 1
 FAIL, 10 PAUSE or 20 STOP.
 
 - `tests`: against the trunk, a committed test file (by the freeze config's
-  globs) that is modified is FAIL; one deleted needs a supersessions record
-  whose successor exists and names it; the freeze config itself unchanged; the
-  supersessions register append-only.
+  `tests` globs, which include `scripts/checks/**`) that is modified is FAIL;
+  one deleted needs a supersessions record whose successor exists and names
+  it; any change at all to a `frozen` path (by default `guards.py`,
+  `pre-barrier.sh`, `preflight.sh`) is FAIL; the freeze config itself
+  unchanged; the supersessions register append-only.
+- **Who judges.** `pre-barrier.sh` runs `guards.py` as committed on the trunk,
+  never the merge candidate's copy, so a lane that edits the guards cannot
+  pass its own merge. The trunk's copy starts as the owner's and can change only
+  through a merge that this same check would fail.
 - `ledger`: the file's trunk lines are a prefix of its current lines; every line
   is an `add` or a `retire`; an `add` has an id, a source and (checks) a class,
   and any `run` is a script under `scripts/checks/` that exists; a `retire`
@@ -218,6 +224,6 @@ FAIL, 10 PAUSE or 20 STOP.
 `hooks/test-freeze.py`, registered by the plugin as a PreToolUse hook on Edit,
 Write, MultiEdit and NotebookEdit. Inert in a checkout without
 `.claude/test-freeze.json`. Refuses an edit to a path matching the config's
-globs that exists on the config's `base`, and to the config itself; allows
-everything else, including tests a lane created. A shell command gets past it,
+globs, or the `frozen` list, that exists on the config's `base`, and to the
+config itself; allows everything else, including tests a lane created. A shell command gets past it,
 which is why the pre-barrier line is the guarantee and the hook is the warning.

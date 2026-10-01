@@ -185,18 +185,26 @@ unchanged afterwards.
 12 has the contracts. Both gates are new in 0.3.0 and were not measured on the
 source build; the reference says what they defend against and why.
 
-**Gate 11.** Copy `assets/guards.py` to `scripts/guards.py` and fill
-`assets/preflight.template.sh`: the generated files it scans for slots, the
-disk paths and free-space floor, the boot-id and reboot-pending commands, and
-the login and usage-window commands. Fill the rig doc's §Disk and reboots and
+**Gate 11.** Copy `assets/guards.py` to `scripts/guards.py` and commit it on
+the trunk (pre-barrier runs the trunk's copy). Fill
+`assets/preflight.template.sh`: the generated files it scans for slots
+(`<GENERATED_FILES>`), the disk paths and floor (`<DISK_PATHS>`,
+`<DISK_FREE_GB>`), the boot-id and reboot-pending commands, the login check and
+lifetime (`<AUTH_CHECK_COMMAND>`, `<AUTH_LIFETIME_HOURS>`), the usage-window
+command, the minutes a wave and a barrier may take plus the handoff reserve
+(`<WAVE_TIME_LIMIT_MINUTES>`, `<BARRIER_MAX_MINUTES>`,
+`<HANDOFF_RESERVE_MINUTES>`), and the spend figures as plain numbers in the
+usage events' unit (`<SPEND_LIMIT_NUMBER>`, `<WAVE_SPEND_LIMIT_NUMBER>`,
+`<BARRIER_SPEND_ESTIMATE>`, `<HANDOFF_RESERVE_NUMBER>`). Fill the rig doc's §Disk and reboots and
 §Login and usage while measuring. Settle how the seat is woken after a usage
 pause (`<RESUME_MECHANISM>`). Where nothing reports the login's time left, the
 user records the login time after each login; say so plainly, it is theirs to
 do.
 
-**Gate 12.** Draft `.claude/test-freeze.json` with the project's test globs,
-the trunk as `base`, and the supersessions register's path, for the user to
-place and commit: once gate 2's allowlist is in, it denies agent edits to that
+**Gate 12.** Draft `.claude/test-freeze.json` with the project's test globs
+plus `scripts/checks/**`, the `frozen` list (by default `scripts/guards.py`,
+`scripts/pre-barrier.sh` and `scripts/preflight.sh`), the trunk as `base`, and
+the supersessions register's path, for the user to place and commit: once gate 2's allowlist is in, it denies agent edits to that
 file, as it does to the settings. Seed the checks ledger and the
 never-together ledger as empty files on the trunk, and create
 `scripts/checks/`. Add the ruling policy's §Retiring a check. Fill

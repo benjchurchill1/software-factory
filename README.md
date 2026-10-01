@@ -136,13 +136,19 @@ Inert until the repo commits `.claude/test-freeze.json` (the factory drafts it
 at gate 12; you place and commit it):
 
 ```json
-{"tests": ["tests/**", "**/*.spec.ts"], "base": "your-trunk-branch",
+{"tests": ["tests/**", "**/*.spec.ts", "scripts/checks/**"],
+ "frozen": ["scripts/guards.py", "scripts/pre-barrier.sh", "scripts/preflight.sh"],
+ "base": "your-trunk-branch",
  "supersessions": "docs/build/supersessions.jsonl"}
 ```
 
 In that repo and its lane worktrees, an Edit or Write to a file matching
 `tests` that already exists on `base` is refused, with instructions to write a
-successor instead. Tests a lane creates are not frozen until merged. A shell
+successor instead. Tests a lane creates are not frozen until merged. Check
+scripts belong in `tests`, because a weakened check is a weakened test. The
+`frozen` paths are the ratchet's own scripts (these three by default): no
+merge may change them at all, and the pre-barrier script judges each merge
+with the trunk's copy of `guards.py`, not the candidate's. A shell
 command can still change a file, so the pre-barrier script's `tests` line is
 the guarantee and the hook is the early warning.
 

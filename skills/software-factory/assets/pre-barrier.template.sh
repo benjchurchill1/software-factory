@@ -26,10 +26,12 @@
 #   3. artefacts: no trace.zip, *.har or .env* in any lane's diff against the
 #                   trunk, nor in the integration branch's. A tracked .env.example
 #                   is flagged too; a scan that whitelists is the next hole.
-#   4. tests: no committed test edited, and every deleted one superseded
-#                   by a successor that names it, with a record in the
-#                   supersessions register (guards.py tests; the test-freeze
-#                   hook is the early warning, this line is the guarantee).
+#   4. tests: no committed test or check script edited, no frozen file
+#                   (guards.py, this script, preflight.sh) changed at all, and
+#                   every deleted test superseded by a successor that names it,
+#                   with a record in the supersessions register (guards.py
+#                   tests; the test-freeze hook is the early warning, this line
+#                   is the guarantee). guards.py runs as committed on the trunk.
 #   5. checks-ledger: <CHECKS_LEDGER> is append-only against the trunk, and
 #                   every retirement cites a ruling that names the check.
 #   6. together-ledger: the same for <NEVER_TOGETHER_PATH>.
@@ -78,7 +80,6 @@ WAVE="${WAVE_ARG:-${WAVE:-}}"
 TRUNK="${TRUNK:-<TRUNK_BRANCH>}"
 INTEGRATION="${INTEGRATION:-<INTEGRATION_BRANCH>}"
 LANE_GLOB="<LANE_BRANCH_GLOB>"
-GUARDS="$ROOT/scripts/guards.py"
 CHECKS_LEDGER="<CHECKS_LEDGER>"
 TOGETHER="<NEVER_TOGETHER_PATH>"
 CLEAN_ROUNDS="<CLEAN_ROUNDS>"
@@ -138,9 +139,16 @@ done
 [ -z "$found" ] && pass "artefacts: none in $(( ${#LANES[@]} + 1 )) diffs" || fail "artefacts:$found"
 
 # ------------------------------------------------- 4-8. the ratchet (guards.py)
-# guards.py prints one verdict line of its own; its detail goes to stderr.
+# guards.py prints one verdict line of its own; its detail goes to stderr. It
+# runs as the TRUNK has it, never as the merge candidate does: a lane that
+# edited guards.py must not be the one judging its own merge.
+TRUNK_GUARDS="$(mktemp "${TMPDIR:-/tmp}/guards.XXXXXX")"
+trap 'rm -f "$TRUNK_GUARDS"' EXIT
+git show "$TRUNK:scripts/guards.py" > "$TRUNK_GUARDS" 2>/dev/null || : > "$TRUNK_GUARDS"
 guard() {
-  local out; out="$(python3 "$GUARDS" --root "$ROOT" "$@")"
+  local out
+  if [ ! -s "$TRUNK_GUARDS" ]; then echo "FAIL $1: scripts/guards.py is not committed on $TRUNK"; FAILED=1; return; fi
+  out="$(python3 "$TRUNK_GUARDS" --root "$ROOT" "$@")"
   local rc=$?
   [ -n "$out" ] || out="FAIL $1: guards.py printed nothing (exit $rc)"
   echo "$out"; [ "$rc" -eq 0 ] || FAILED=1

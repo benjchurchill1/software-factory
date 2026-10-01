@@ -141,8 +141,9 @@ that you did.
 
 ## Superseding a test, and who deletes the old one
 
-A committed test may not be edited. `.claude/test-freeze.json` names which
-files are tests; the test-freeze hook refuses an edit to any of them that
+A committed test may not be edited, and neither may a committed check script
+under `scripts/checks/` or the ratchet's own scripts (the config's `frozen`
+list). `.claude/test-freeze.json` names which files are tests; the test-freeze hook refuses an edit to any of them that
 exists on <BRANCH>, and `<PRE_BARRIER_COMMAND>`'s `tests` line fails a merge
 that edits one anyway (a shell command gets past the hook, not past the
 barrier). A test a lane created itself is not frozen until it is merged. When one is genuinely wrong (it encodes the

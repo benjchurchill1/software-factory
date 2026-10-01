@@ -10,11 +10,12 @@ Five additions for a build nobody reviews wave by wave. None was measured on the
 - **Pre-flight.** New `preflight.sh`, run at wave open and before every barrier attempt: generated files free of slots, disk, reboot since last seen, pending reboot, login time left, usage window and budget, never-together. Exits 0 go, 1 fail, 10 pause, 20 stop, 30 recover. An expiring login stops the loop cleanly with an `auth-expiring` handoff, never mid-barrier. A spent usage window **pauses** until the reset: the seat writes the keep-alive hook's new `pause` file, which lets it stop uncounted, and is woken by the rig's resume mechanism.
 - **Usage ledger.** The journal's `usage` and `rate_limit` events are the pacing source: the next wave or barrier is estimated as the largest of the last three.
 - New `guards.py` (standard library) behind the pre-barrier ratchet lines and pre-flight: `ledger`, `checks`, `tests`, `panels`, `together`, `pace`, `auth`.
+- The ratchet guards itself: check scripts under `scripts/checks/` are frozen like tests; the freeze config's `frozen` list (by default `guards.py`, `pre-barrier.sh`, `preflight.sh`) may not change at all; and `pre-barrier.sh` judges each merge with the trunk's committed `guards.py`, not the candidate's.
 - `pre-barrier.sh` gains five lines: tests, checks-ledger, together-ledger, panels, checks.
 - The factory has thirteen gates: 11 (pre-flight) and 12 (the ratchet). The rig template gains §Disk and reboots and §Login and usage; recovery gains three drills (reboot, usage limit, login expiry); the allowlist gains the new scripts and denies edits to the freeze config.
 - The progress page shows `paused` time in "Where the time went"; the monitor checks clean rounds, predictions and proposed checks at review.
 - One new task eval each for `build-loop` and `software-factory`.
-- Self-test: 41 tests (from 26).
+- Self-test: 43 tests (from 26).
 
 ## 0.2.1
 
