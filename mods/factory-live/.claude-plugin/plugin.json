@@ -1,0 +1,11 @@
+{
+  "name": "factory-live",
+  "version": "0.1.0",
+  "description": "software-factory, live in the build seat: wakes a paused seat when its usage window resets, records every turn's time and tokens, and shows the keep-alive's state above the prompt.",
+  "author": {
+    "name": "Ben Churchill"
+  },
+  "repository": "https://github.com/benjchurchill1/software-factory",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

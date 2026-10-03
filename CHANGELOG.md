@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- **New optional plugin: `factory-live`** (`mods/factory-live/`), a Claude Code mod built on the early-access function-hooks API. It runs inside the build seat's session, scoped to a repo `arm.py` has armed, and writes only its own files in the arming's state directory.
+- **It wakes a paused seat.** A minute after the `pause` file's `until`, it submits a resume prompt that follows §Pausing on a usage limit. It wakes once per pause and at most 24 times per arming, and never after the `stop` file, past the arming's 72 hours, or in any session other than the seat. The seat is the session whose prompt carried the marker, recorded in `seat.json`; `--exclude` sessions never qualify. This fills `<RESUME_MECHANISM>`, which had been `/loop`, a scheduled resume, or a line on the owner's list.
+- **It writes the windows.** On each measurement it writes `usage-window.json` (every rate-limit window and the session cost) and `usage-window` (`<percent left> <resets at>` for the tightest window). The latter works as `<USAGE_WINDOW_COMMAND>` only when the run's spend figures are in window percent.
+- **It records turns.** It appends each seat turn (subagents included) to `turns.jsonl`: duration, end reason, model, token counts and running cost. The loop can cite it as its usage source.
+- **It shows the state.** A band above the prompt and a `/factory` command show the keep-alive's counts, the pause, the tightest window and the cost.
+- Nine tests under `claude plugin test`. It has not yet woken a real seat after a real usage limit, or run in a cloud session.
+- The rig doc, gate 11 and the loop interview name it as a resume mechanism.
+
 ## 0.5.0
 
 - **New skill: `environment-check`.** Before the build seat starts, it lists everything the build needs from outside the repo in `docs/build/environment.json` (secrets by exact name, CLIs, hosts, probes that prove each token against its real target, the hosted database's migration path, logins, machine size) and the owner's standing word in `docs/build/standing-decisions.md`. `scripts/env-check.py` (standard library) checks them from the session the build will run in and writes a READY or BLOCKED report whose failing lines are one list of owner actions. Exit 0 ready, 1 blocked, 2 manifest unreadable or unfilled; `--dry-run` prints the checks and runs none.

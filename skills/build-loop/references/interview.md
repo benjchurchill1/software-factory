@@ -179,8 +179,9 @@ Confirm or adjust the defaults:
   `auth-expiring` handoff. How long does a login last here, and can anything
   report the time left? If nothing can, the owner records the login time.
 - A usage limit → pause until the window resets, then resume. What reports the
-  window, and what wakes the seat at the reset time (`/loop`'s next firing, a
-  scheduled resume of the session, or a line on the owner's list)?
+  window, and what wakes the seat at the reset time (the `factory-live` mod,
+  `/loop`'s next firing, a scheduled resume of the session, or a line on the
+  owner's list)?
 
 Also settle the durable run-state directory, total spend ceiling and accounting
 unit, elapsed-time ceiling, per-operation bounds and handoff reserve. Budgets

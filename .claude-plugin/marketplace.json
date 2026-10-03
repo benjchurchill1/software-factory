@@ -1,15 +1,22 @@
 {
   "name": "software-factory",
-  "owner": { "name": "Ben Churchill" },
+  "owner": {
+    "name": "Ben Churchill"
+  },
   "metadata": {
     "description": "Skills for running an autonomous, register-driven software build with Claude Code.",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "plugins": [
     {
       "name": "software-factory",
       "source": "./",
       "description": "Prime a project for an unattended build, check its environment before it starts, generate the wave-based build loop, and run a monitor seat with a live progress checklist."
+    },
+    {
+      "name": "factory-live",
+      "source": "./mods/factory-live",
+      "description": "Early access. The build seat, live inside Claude Code: wakes a seat paused on a usage limit once the window resets, writes the rate-limit windows and every turn's tokens beside the keep-alive's state, and shows the keep-alive's counts above the prompt."
     }
   ]
 }

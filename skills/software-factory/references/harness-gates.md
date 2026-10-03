@@ -169,8 +169,10 @@ protocol. Low disk is fixed before anything launches.
 
 A pause is written to the keep-alive hook's `pause` file, which lets the seat
 stop, uncounted, until the reset. What wakes it then is the rig's
-`<RESUME_MECHANISM>`: `/loop`'s next firing, a scheduled resume of the session,
-or, where there is nothing, a line on the owner's list with the reset time.
+`<RESUME_MECHANISM>`: the `factory-live` mod (it wakes the seat a minute after
+the pause file's `until`), `/loop`'s next firing, a scheduled resume of the
+session, or, where there is nothing, a line on the owner's list with the reset
+time.
 
 ## Gate 12: tests and checks only get stricter
 

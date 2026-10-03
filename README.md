@@ -21,6 +21,13 @@ The plugin also registers two hooks, each inert until you set it up for a repo:
 a **keep-alive Stop hook** for the build seat, and a **test-freeze hook** that
 refuses edits to committed tests (see below).
 
+A second, optional plugin, **`factory-live`** (`mods/factory-live/`), works from
+inside the build seat's session using Claude Code's early-access function
+hooks. It wakes a seat paused on a usage limit once the window resets, writes
+the account's rate-limit windows and every turn's tokens next to the
+keep-alive's state, and shows the keep-alive's counts above the prompt. See
+[its README](mods/factory-live/README.md).
+
 ## Where this came from, and what that does and doesn't show
 
 All three skills were extracted from one real build: a UK accountancy
@@ -98,6 +105,7 @@ it has not yet been measured on a build from the start.
 ```
 /plugin marketplace add benjchurchill1/software-factory
 /plugin install software-factory@software-factory
+/plugin install factory-live@software-factory        # optional, early access
 ```
 
 ## Use
@@ -202,6 +210,9 @@ the test freeze, clean rounds, pacing and the login check) and the pre-flight
 script's exit codes; tests both hooks and the arming helper against real git,
 including a lane worktree; and checks the house style: UK spelling and no em
 dashes in the prose.
+
+The `factory-live` mod has its own checks, which need the `claude` CLI:
+`claude plugin validate mods/factory-live` and `claude plugin test mods/factory-live`.
 
 That shows the scripts behave. Whether Claude follows the skills is a separate
 question, and each skill has evals for it in `skills/<name>/evals/`:
