@@ -161,8 +161,8 @@ time when what is left cannot fund it.
 With no window command, the loop still pauses when a request is refused for a
 usage limit: it records the refusal's reset time, and pre-flight pauses until
 then. Whatever wakes the seat, test it once here, before the first wave. With
-the `factory-live` mod loaded in the seat, the mod is what wakes it, and `/factory`
-names the state directory it reads.
+the `factory-live` mod enabled for this project (gate 11's settings entry), the
+mod is what wakes it, and `/factory` names the state directory it reads.
 
 ## When the runtime wedges
 

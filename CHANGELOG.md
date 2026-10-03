@@ -9,6 +9,8 @@
 - **It shows the state.** A band above the prompt and a `/factory` command show the keep-alive's counts, the pause, the tightest window and the cost.
 - Nine tests under `claude plugin test`. It has not yet woken a real seat after a real usage limit, or run in a cloud session.
 - The rig doc, gate 11 and the loop interview name it as a resume mechanism.
+- **Enabled per project.** If the owner picks `factory-live` to wake the seat, gate 11 fills the new `assets/settings.factory-live.template.json`. Its `enabledPlugins` and `extraKnownMarketplaces` entries go into the project's gitignored settings file beside gate 2's allowlist, so the mod loads in that repo's seats and nowhere else. The owner merges it by hand, as with the allowlist, and step 9 checks that `/factory` answers in a new session in the repo.
+- Self-test: 52 tests (from 51). The new test checks that the entry enables only the mod and grants no permission or hook.
 
 ## 0.5.0
 

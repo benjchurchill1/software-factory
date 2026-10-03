@@ -439,12 +439,27 @@ esac
         self.assertIn("## Retiring a check", policy)
         allow = json.loads((SKILL / "assets/settings.allowlist.template.json").read_text())
         self.assertIn("Edit(.claude/test-freeze.json)", allow["permissions"]["deny"])
+        self.assertIn("Edit(.claude/settings*.json)", allow["permissions"]["deny"])
         hooks = json.loads((HOOKS / "hooks.json").read_text())["hooks"]
         for event in hooks.values():
             for group in event:
                 for hook in group["hooks"]:
                     script = re.search(r"hooks/([\w-]+\.py)", hook["command"]).group(1)
                     self.assertTrue((HOOKS / script).is_file(), script)
+
+
+    def test_factory_live_settings_entry_is_scoped_and_grants_nothing(self):
+        """Gate 11's draft enables the mod for one project and widens no permission."""
+        entry = json.loads((SKILL / "assets/settings.factory-live.template.json").read_text())
+        self.assertEqual(entry["enabledPlugins"], {"factory-live@software-factory": True})
+        self.assertEqual(entry["extraKnownMarketplaces"]["software-factory"]["source"],
+                         {"source": "github", "repo": "benjchurchill1/software-factory"})
+        self.assertNotIn("permissions", entry)
+        self.assertNotIn("hooks", entry)
+        market = json.loads((HOOKS.parent / ".claude-plugin/marketplace.json").read_text())
+        names = {p["name"]: p["source"] for p in market["plugins"]}
+        self.assertEqual(names.get("factory-live"), "./mods/factory-live")
+        self.assertTrue((HOOKS.parent / "mods/factory-live/.claude-plugin/plugin.json").is_file())
 
 
 class KeepAliveBase(unittest.TestCase):

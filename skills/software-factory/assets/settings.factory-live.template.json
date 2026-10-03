@@ -1,0 +1,28 @@
+{
+  "_readme": [
+    "THE FACTORY-LIVE MOD, for this project only. Drafted at gate 11 when the",
+    "owner chooses it as <RESUME_MECHANISM>. The OWNER merges these two keys into",
+    "the same project settings file as gate 2's allowlist (gitignored,",
+    "per-machine); the factory never writes that file.",
+    "",
+    "enabledPlugins turns the mod on in this repo and nowhere else, so the build",
+    "seat and the monitor seat both load it. extraKnownMarketplaces lets a fresh",
+    "machine find the marketplace; Claude Code asks before it installs anything.",
+    "",
+    "Even loaded, the mod does nothing until hooks/arm.py arms this repo. It writes",
+    "only its own files in the arming's state directory, never the journal.",
+    "",
+    "Check: in a new session in this repo, `/factory` answers. Before arming it says",
+    "the session is in no armed repo; once the seat runs, it names the seat.",
+    "",
+    "Delete this _readme key when you merge."
+  ],
+  "enabledPlugins": {
+    "factory-live@software-factory": true
+  },
+  "extraKnownMarketplaces": {
+    "software-factory": {
+      "source": { "source": "github", "repo": "benjchurchill1/software-factory" }
+    }
+  }
+}

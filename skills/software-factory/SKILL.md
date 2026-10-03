@@ -38,7 +38,7 @@ condition. **Gate 0 decides whether the build is worth running at all**; gates
 | 8 | State the loop reads is generated, and the record is capped | a regeneration path per derived file | the agent |
 | 9 | Deploy is one guarded script, or there is no deploy | `scripts/deploy-<env>.sh` | the agent writes, the user confirms each run |
 | 10 | Every seat is named, and one owns the trunk | the conventions doc's §Seats, added at step 8 | the agent |
-| 11 | The build sees its limits coming: login, usage, disk, reboots | `scripts/preflight.sh`; the rig doc's §Disk and reboots and §Login and usage | the agent writes; **the user records the login time** |
+| 11 | The build sees its limits coming: login, usage, disk, reboots | `scripts/preflight.sh`; the rig doc's §Disk and reboots and §Login and usage; with `factory-live`, its settings entry | the agent writes; **the user records the login time**, and places the `factory-live` entry if chosen |
 | 12 | Tests and checks only get stricter | `.claude/test-freeze.json`, the checks and never-together ledgers, `scripts/guards.py` | the agent drafts; **the user places and commits the freeze config** |
 
 **Waivers.** Gates 4 and 6 assume a shared stateful service (a database, a
@@ -202,6 +202,15 @@ pause (`<RESUME_MECHANISM>`). Where nothing reports the login's time left, the
 user records the login time after each login; say so plainly, it is theirs to
 do.
 
+If the user chooses the `factory-live` mod to wake the seat, fill
+`assets/settings.factory-live.template.json` and write it to a path the user can
+paste from, as at gate 2. It enables the mod for this project only, in the same
+gitignored project settings file as the allowlist, so the build seat and the
+monitor load it here and nowhere else. The user merges it by hand; never write
+the settings file. **Exit condition:** `/factory` answers in a new session in
+the repo. The mod is early access: name the fallback (`/loop`, a scheduled
+resume, or the owner's list) in the rig doc beside it.
+
 **Gate 12.** Draft `.claude/test-freeze.json` with the project's test globs
 plus `scripts/checks/**`, the `frozen` list (by default `scripts/guards.py`,
 `scripts/pre-barrier.sh` and `scripts/preflight.sh`), the trunk as `base`, and
@@ -284,6 +293,8 @@ Do not hand over an unprimed factory or an unrun loop.
 - `lane-cut.sh --dry-run <name>`: prints every command, cuts nothing.
 - `pre-barrier.sh --dry-run`: prints every check, runs none.
 - `preflight.sh --dry-run`: prints every check; one real run is recorded.
+- With `factory-live` chosen at gate 11: `/factory` answers in a new session in
+  the repo.
 - The test-freeze hook refuses an edit to a committed test, and allows a new
   one, in a scratch branch.
 - `lane-db.sh up`, `clone`, one small test, `drop`: report the replay time.

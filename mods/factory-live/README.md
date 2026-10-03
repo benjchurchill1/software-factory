@@ -36,7 +36,17 @@ list (the monitor) is never the seat.
 /plugin install factory-live@software-factory
 ```
 
-It has to load in the session the build seat runs in: an installed plugin, or
+For a build, enable it for the project rather than everywhere. The factory's
+gate 11 drafts the entry
+(`skills/software-factory/assets/settings.factory-live.template.json`), and the
+owner merges it into the project's gitignored settings file next to the
+allowlist:
+
+```json
+"enabledPlugins": { "factory-live@software-factory": true }
+```
+
+Otherwise it has to load in the session the build seat runs in: an installed plugin, or
 `claude --plugin-dir <this folder>` (or `CLAUDE_CODE_PLUGIN_DIRS` where no flag
 can be given). Start the seat and run `/factory`. It should say
 `this session  the build seat`.

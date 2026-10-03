@@ -174,6 +174,15 @@ the pause file's `until`), `/loop`'s next firing, a scheduled resume of the
 session, or, where there is nothing, a line on the owner's list with the reset
 time.
 
+The mod is enabled per project, not per machine:
+`assets/settings.factory-live.template.json` holds the `enabledPlugins` and
+`extraKnownMarketplaces` entries, which the owner merges into the project's
+gitignored settings file beside gate 2's allowlist. Scoped that way it loads in
+this repo's seats and nowhere else. It is inert until `arm.py` arms the repo
+anyway, but a mod another project never loads is one that can't surprise it.
+The agent drafts the entry and the owner places it, for the same reason the
+allowlist is theirs: the loop may not widen what loads into its own session.
+
 ## Gate 12: tests and checks only get stricter
 
 ### Why
