@@ -40,6 +40,32 @@ sat PASS for six waves; it could not fail. (`verification/wave55-verify.txt`,
 PM-CMP-01.) Two legs of another row were satisfied from the second run onward
 by the previous run's rows. (Escalation E-163.)
 
+## Gate 0b: the interface
+
+Measured on a second build, not the one above: a staff case-management app
+(Next.js, Supabase, 98 register rows), run by the same loop in October 2026.
+The register covered accessibility (WCAG 2.2 AA), tablet and phone layouts and
+a branded PDF, and had no row about how a screen looks. The owner's
+interactive prototype reached the build only as a text summary
+(`docs/spec/prototype.txt`). Nine waves in, with 56 rows passing and the build
+deployed, styling was one hand-grown `globals.css` of 691 lines with colour
+literals throughout, and the owner signed in to the hosted site and called the
+UI appalling. The repair, mid-build: a design brief and system, five approved
+screens (four key screens and a phone view), five new DSN rows handed over
+through the ruling policy because the register was frozen, and one whole wave
+spent restyling with the logic untouched. (Keystone `design-system.md` and the
+project's thread record, 2026-10-08.)
+
+A sister product hit the same wall from the other side: after a session of
+closing gaps, every field present and every test green, its reviewer "still
+saw the old screens". Its fix was the anti-drift audit that DSN-04 copies:
+wireframe and production screenshotted in the same state at desktop and phone
+width and compared side by side, and a screen does not ship until it matches.
+(CoSec `CLAUDE.md`, 2026-08-26, §Visual anti-drift audit.) A third product's
+design system enforces one token layer with a static gate on colour literals
+and a contrast test per token pair, including hover grounds; DSN-01 and DSN-05
+copy those.
+
 ## Gate 1: the rig
 
 The box was dedicated but not headless, and the barrier's own record names the

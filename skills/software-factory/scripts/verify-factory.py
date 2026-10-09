@@ -422,7 +422,8 @@ esac
                        '"type": "usage"', '"type": "rate_limit"', "auth-expiring", "<SUPERSESSIONS_PATH>",
                        "<NEVER_TOGETHER_PATH>", "A contention red never becomes a check",
                        "the loop never rules on its own checks", "`paused`",
-                       "<ENV_CHECK_COMMAND>", "environment-blocked", "<STANDING_DECISIONS_PATH>"]:
+                       "<ENV_CHECK_COMMAND>", "environment-blocked", "<STANDING_DECISIONS_PATH>",
+                       "<DESIGN_SYSTEM_PATH>", "<MOCKUPS_PATH>", "not match its approved mockup is not done"]:
             self.assertIn(clause, " ".join(loop.split()))
         conventions = (LOOP / "assets/build-conventions.template.md").read_text()
         for clause in ["## Seats", "`build-monitor`", "isolation: 'worktree'"]:
@@ -435,6 +436,21 @@ esac
                        "Red barrier after an excluded lane", "Residual excluded schema",
                        "Host reboots", "Usage limit", "Login expires"]:
             self.assertIn(clause, drills)
+        design = " ".join((SKILL / "references/design-definition.md").read_text().split())
+        for clause in ["before the register freezes", "DSN-01", "DSN-02", "DSN-03", "DSN-04", "DSN-05",
+                       "wave 1's frontier", "approval cannot", "## Waiver", "new** rows"]:
+            self.assertIn(clause, design)
+        factory = " ".join((SKILL / "SKILL.md").read_text().split())
+        for clause in ["### 0b. Define the interface, then freeze", "the owner approves the mockups",
+                       "fourteen gates", "`<DESIGN_SYSTEM_PATH>`, `<MOCKUPS_PATH>`"]:
+            self.assertIn(clause, factory)
+        template = (SKILL / "assets/design-system.template.md").read_text()
+        for slot in ["<MOCKUPS_PATH>", "<OWNER_WORDS>", "<TOKENS", "<KEY_SCREENS", "<DESIGN_ROWS"]:
+            self.assertIn(slot, template)
+        interview = (LOOP / "references/interview.md").read_text()
+        self.assertIn("`<DESIGN_SYSTEM_PATH>`, `<MOCKUPS_PATH>`", interview)
+        monitor = (LOOP.parent / "build-monitor/references/review-checklist.md").read_text()
+        self.assertIn("matches its approved mockup", " ".join(monitor.split()))
         policy = (SKILL / "assets/ruling-policy.template.md").read_text()
         self.assertIn("## Retiring a check", policy)
         allow = json.loads((SKILL / "assets/settings.allowlist.template.json").read_text())

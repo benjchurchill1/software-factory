@@ -39,6 +39,11 @@ the product itself. The builder's self-report is never evidence.
 Screenshots at **390 px and 1440 px** for every changed screen, from the
 panel's evidence or taken yourself against a served build.
 
+- [ ] Each changed key screen matches its approved mockup side by side, at
+      both widths, in the mockup's fixture state: layout, colour, type,
+      spacing and overlay behaviour, not only the fields. Every field present
+      and every test green is not a match. No colour or component outside the
+      design system.
 - [ ] Page length is proportionate. The source build caught an AML page at
       12,496 px, filled by an unbounded history list.
 - [ ] No truncated values at 390 px (`scrollWidth > clientWidth`).

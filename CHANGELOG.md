@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- **Gate 0b: the interface is defined before the register freezes.** A loop never invents a look: with no design rows it ships whatever the first lane wrote, every row passes, and nobody sees it until someone signs in to a deployed build. New step 0b in `software-factory`, between the oracle review and the freeze: a design brief, a design system of tokens and rules (new `assets/design-system.template.md`), approved mockups of the four to six key screens at both widths, and five design rows in the register (one token layer enforced by a static check, the shell, shared components, each key screen matching its approved mockup by side-by-side screenshot, contrast by token pair). The owner may delegate taste but must approve the mockups, in their own words. Design rows go in wave 1. Waived, with the reason, only for a product with no user interface. Reference: `references/design-definition.md`.
+- Measured on the Keystone build: 56 of 98 rows passing and deployed, accessibility and tablet rows all in the register, no design row, and the owner called the UI appalling; a design system, five approved screens, five new rows and a whole restyle wave followed mid-build. Recorded in `evidence.md` §Gate 0b with the sister products the rows are copied from.
+- Oracle test 7 now asks which row says what a person sees at each step of the walk.
+- `build-loop` takes `<DESIGN_SYSTEM_PATH>` and `<MOCKUPS_PATH>`; the loop prompt has UI lanes read the design system before writing a screen and treats a screen that does not match its mockup as not done. The interview pushes back once when the product has screens and no design.
+- `build-monitor`'s UI lane checklist compares each changed key screen with its approved mockup side by side.
+- One new task eval for `software-factory`. Self-test: 51 tests, with the design gate's contracts added to the prompt-contracts test.
+
 ## 0.5.0
 
 - **New skill: `environment-check`.** Before the build seat starts, it lists everything the build needs from outside the repo in `docs/build/environment.json` (secrets by exact name, CLIs, hosts, probes that prove each token against its real target, the hosted database's migration path, logins, machine size) and the owner's standing word in `docs/build/standing-decisions.md`. `scripts/env-check.py` (standard library) checks them from the session the build will run in and writes a READY or BLOCKED report whose failing lines are one list of owner actions. Exit 0 ready, 1 blocked, 2 manifest unreadable or unfilled; `--dry-run` prints the checks and runs none.

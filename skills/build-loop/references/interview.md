@@ -45,6 +45,12 @@ a verdict for "this requirement is itself defective" that does not involve
 editing the register: otherwise the loop's only route past a bad row is to
 quietly change the contract.
 
+**And establish what it looks like.** If the product has screens, ask for the
+design system and the approved mockups. If there are none, or the register
+has no design rows, the look is undefined and the loop will not invent one:
+push back once, and send it to `software-factory` gate 0b before the loop
+starts. Accessibility and responsive rows are not a design.
+
 ## 3. Green: CHALLENGE
 
 - **What single command means green?**
@@ -207,6 +213,7 @@ Which answer fills which template slot. Slots appear as `<NAME>` or
 | branch | `<BRANCH>`, `<BASE_BRANCH>`, `<COMMIT_FORMAT>` |
 | the oracle's path | `<REGISTER_PATH>`, `<N>`, `<SCOPE_RULE>` |
 | the spec and architecture docs | `<SPEC_PATH>`, `<ARCHITECTURE_PATH>`, `<EXPLICIT_EXCLUSIONS>`, `<FIXED_DECISIONS>` |
+| the design system and the approved mockups (gate 0b; on a product with no interface, write "none: no user interface") | `<DESIGN_SYSTEM_PATH>`, `<MOCKUPS_PATH>` |
 | the green command | `<CHECK_COMMAND>`, `<BUILDER_GREEN_COMMAND>`, `<WHAT_IT_COVERS>` |
 | what green covers, and what it doesn't start | `<RUNTIME_CHECK>`, `<RUNTIME_CHECK_RATIONALE>` |
 | the shared resource | `<SINGLETON>`, `<SINGLETON_UP_CHECK>`, `<RESTART_COMMAND>` |

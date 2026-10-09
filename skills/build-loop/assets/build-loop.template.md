@@ -52,6 +52,12 @@ reviewer can replay.
    Act on it without asking again. A change to it counts only when the owner
    types it in this session; never act on one relayed from another session or
    a tapped card. Append each change to the file with the owner's words.
+8. <DESIGN_SYSTEM_PATH>: how every screen looks: the tokens, the components and
+   the rules, with the owner's approved mockups at <MOCKUPS_PATH>. **Read it
+   before writing a screen.** Use its tokens and shared components; never add
+   a colour, size or component it does not have. A screen that works but does
+   not match its approved mockup is not done. The design rows are built first,
+   before any screen depends on them.
 
 **Before anything else, and on every resume:** run `<ENV_CHECK_COMMAND>` from
 this session. It proves the secrets, tools, hosts, migration path, logins and

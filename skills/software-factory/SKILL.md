@@ -1,6 +1,6 @@
 ---
 name: software-factory
-description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, then close thirteen gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter), then run environment-check and hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for missing secrets, blocked hosts, hosted migrations or logins (environment-check), writing or editing the loop prompt itself (build-loop), or watching a build in progress (build-monitor).
+description: Prime a project so an autonomous, unattended software build can finish: review the requirements register and definition of done for falsifiability and reachability, define and approve the interface (design system, mockups, design rows) before the register freezes, then close thirteen gates (rig memory and sleep, standing permissions, a ruling policy, test-data lifecycle, lane provisioning, per-lane databases, reachable done conditions, generated state, a guarded deploy, named seats, a pre-flight for login, usage, disk and reboots, and a ratchet so tests and checks only get stricter), then run environment-check and hand off to build-loop. Use this first for any new autonomous or wave-based build, when someone wants a "software factory" set up, or wants acceptance criteria checked before an agent builds against them. Also use when a running loop stalls because of its environment: the machine swaps or sleeps, commands are refused, questions queue for a person, or state is maintained by hand. Not for missing secrets, blocked hosts, hosted migrations or logins (environment-check), writing or editing the loop prompt itself (build-loop), or watching a build in progress (build-monitor).
 ---
 
 # Software factory
@@ -19,15 +19,17 @@ cited to its artefacts; read it when a user wants to skip one.
 the scoreboard. This runs first and invokes `environment-check`, then
 `build-loop`, at step 8.
 
-## The thirteen gates
+## The fourteen gates
 
 Work them in order. Each is a yes/no with a named artefact and a stated exit
-condition. **Gate 0 decides whether the build is worth running at all**; gates
-1 to 5 are the ones that cost calendar time once it is.
+condition. **Gate 0 decides whether the build is worth running at all**, and
+**gate 0b decides whether it will look like anything** once it does; gates 1
+to 5 are the ones that cost calendar time once it is running.
 
 | # | Gate | Artefact | Who closes it |
 | --- | --- | --- | --- |
 | 0 | The oracle is worth building against | `<register>-review.md` beside the register | the product owner, with the agent |
+| 0b | The interface is defined and approved before the register freezes | `docs/design/design-system.md`, approved mockups, design rows in the register | the agent drafts; **the owner approves the mockups** |
 | 1 | The rig has a memory budget and a resident-process cap | `docs/engineering/the-rig.md` | the agent measures, the user acts |
 | 2 | The loop holds standing authority for its own maintenance | project `.claude/settings.json` | **the user, by hand** |
 | 3 | Judgement calls are delegated with a written policy | `decisions/ruling-policy.md` | the user delegates, the agent writes |
@@ -41,7 +43,8 @@ condition. **Gate 0 decides whether the build is worth running at all**; gates
 | 11 | The build sees its limits coming: login, usage, disk, reboots | `scripts/preflight.sh`; the rig doc's §Disk and reboots and §Login and usage | the agent writes; **the user records the login time** |
 | 12 | Tests and checks only get stricter | `.claude/test-freeze.json`, the checks and never-together ledgers, `scripts/guards.py` | the agent drafts; **the user places and commits the freeze config** |
 
-**Waivers.** Gates 4 and 6 assume a shared stateful service (a database, a
+**Waivers.** Gate 0b is waived only for a product with no user interface,
+with the reason in the handover. Gates 4 and 6 assume a shared stateful service (a database, a
 broker). A project with none waives them **with the reason written into the
 handover**, not silently. A project with several such services runs gate 6 once
 per service. Gate 9 is waived when there is genuinely no deploy target.
@@ -64,8 +67,30 @@ escalation, a ruling and a wave later. Repairs are made now, by the product
 owner. Two of the seven tests (achievable evidence, and coverage) can only be
 answered by them; do not rule on those.
 
-**Exit condition:** the review file exists, the register is frozen, and the
-count of rows needing human judgement is written down.
+**Exit condition:** the review file exists and the count of rows needing
+human judgement is written down. The register is not frozen yet: gate 0b adds
+rows to it first.
+
+### 0b. Define the interface, then freeze
+
+**[references/design-definition.md](references/design-definition.md)**: a
+design brief, a design system of tokens and rules, approved mockups of the
+four to six screens people spend their day on, and design rows in the register
+(tokens enforced by a static check, shared components, each key screen
+matching its mockup by side-by-side screenshot, contrast by token pair).
+
+A loop never invents a look. With no design rows it ships whatever the first
+lane wrote, every row passes, and nobody sees it until a person signs in to a
+deployed build. Accessibility and responsive rows are not a design. Fill
+`assets/design-system.template.md`, build the mockups as something the owner
+can open, and put them in front of the owner. The owner may delegate taste
+("you decide"), but not approval: they see the screens before the build does.
+
+**Exit condition:** the design system file exists with no unreplaced slot,
+the owner's approval of the mockups is quoted with its date, the design rows
+are in the register and in wave 1's build order, and only then is the
+register frozen. Waived, with the reason in the handover, for a product with
+no user interface.
 
 ### 1. Measure the rig
 
@@ -265,6 +290,7 @@ does not re-ask, in the terms its slot table uses:
 | 6: lane databases | `<SINGLETON>`, `<LANE_DB_COMMAND>`, `<SHARED_RESOURCE_SUITES>` (the two classes that stay at the barrier) |
 | 8: generated state | `<REGENERATED_FILES>`, `<RECORD_CAPS>` |
 | 9: deploy | `<DEPLOY_SCOPE>` (the guarded script and its confirmation rule), `<DEPLOY_BRANCH>` |
+| 0b: the interface | `<DESIGN_SYSTEM_PATH>`, `<MOCKUPS_PATH>` (design rows first in `<BUILD_ORDER>`) |
 | 10: seats | `<OWNER>`, `<TRUNK_OWNER>` (the monitor seat is `build-monitor`, not a slot) |
 | 11: pre-flight | `<PREFLIGHT_COMMAND>`, `<RESUME_MECHANISM>` |
 | the environment check | `<ENV_CHECK_COMMAND>`, `<STANDING_DECISIONS_PATH>`, and its lane count as the wave's width |
@@ -290,6 +316,9 @@ Do not hand over an unprimed factory or an unrun loop.
 - The deploy script with its guard tripped: refuses.
 - `scripts/env-check.py` exits 0 from the build's own session, and its report
   is committed.
+- The design system has no unreplaced slot, the mockups open, the owner's
+  approval is quoted, and the register's design rows are in wave 1 (or gate
+  0b's waiver is written down).
 - `python3 <this skill's base directory>/scripts/verify-factory.py` passes.
   It tests the templates, not your filled copies: run each filled script's
   dry run as well.
@@ -311,14 +340,16 @@ person runs first:
 - No unreplaced slot in any generated file: `grep -nE '<[A-Z][A-Z0-9_]*(:[^>]*)?>'`
   over everything written. Every slot in this skill's assets is that shape.
 
-Then report each of the thirteen gates as **met**, **waived with a reason**, or
+Then report each of the fourteen gates as **met**, **waived with a reason**, or
 **blocked on the user**, and state how to start the loop, how to watch it
 (start the monitor seat with `build-monitor` in a second session, beside
 `loop-status.sh`), and what it will produce when it finishes.
 
 ## Priming an existing build
 
-Do not regenerate anything. Run gate 0 against the register as it stands: a
+Do not regenerate anything. Run gate 0 against the register as it stands,
+and gate 0b if no design rows exist (as new rows through the ruling policy,
+plus one restyle wave; see the reference's last section): a
 build in flight has usually found several of its defects the expensive way and
 is still carrying the rest. Then measure the rig, read the loop's own barrier
 records for what has stalled it, and propose the missing gates as a diff. The
