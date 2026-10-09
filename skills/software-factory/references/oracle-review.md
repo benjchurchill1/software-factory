@@ -120,6 +120,12 @@ task, the weekly task, the onboarding of a new customer, the thing that happens
 when something goes wrong. At each step, name the row. A step with no row is a
 gap, and the loop will never find it, because the register is its whole world.
 
+Then look at the walk instead of reading it: at each step, name the row that
+says what the person **sees**. Rows about access, contrast and screen widths
+do not count; they hold for an ugly product too. If no row says what a screen
+looks like, the gap is gate 0b's, and the register is not frozen until it is
+closed ([design-definition.md](design-definition.md)).
+
 ---
 
 ## The definition of done, tested the same way

@@ -135,6 +135,37 @@
         }
       ],
       "id": 5
+    },
+    {
+      "name": "gate-0b-defines-the-interface-before-the-freeze",
+      "prompt": "Register's reviewed and I'm happy with it. It's a web app for our care staff, accessible and works on tablets, it's all in there. Freeze it and let's get the build going tonight.",
+      "expected_output": "Does not freeze the register yet. Points out that the register has no row about how a screen looks, and that accessibility and tablet rows hold for an ugly product too. Runs gate 0b: drafts a design brief and design system from the template, builds mockups of the four to six key screens at both widths for the owner to open, asks the owner to approve them (taste may be delegated, approval may not), and adds DSN rows (token layer with a static check, shell, shared components, screens matching mockups by side-by-side screenshot, contrast by token pair) to wave 1's build order. Only then freezes the register and moves on to gate 1.",
+      "files": [
+        "evals/files/register.md"
+      ],
+      "assertions": [
+        {
+          "name": "holds-the-freeze",
+          "text": "Does not freeze the register before design rows exist"
+        },
+        {
+          "name": "a11y-is-not-design",
+          "text": "Says accessibility and responsive rows do not define how the product looks"
+        },
+        {
+          "name": "owner-approves-mockups",
+          "text": "Puts mockups of the key screens in front of the owner for approval before the build"
+        },
+        {
+          "name": "design-rows",
+          "text": "Adds design rows to the register, including one that compares each key screen with its approved mockup"
+        },
+        {
+          "name": "wave-one",
+          "text": "Puts the design rows first in the build order rather than in a later restyle wave"
+        }
+      ],
+      "id": 6
     }
   ]
 }
